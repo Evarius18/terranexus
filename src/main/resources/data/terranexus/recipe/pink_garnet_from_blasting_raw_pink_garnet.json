@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:blasting",
+  "category": "misc",
+  "cookingtime": 100,
+  "experience": 0.2,
+  "group": "gold_ingot",
+  "ingredient": "terranexus:raw_pink_garnet",
+  "result": {
+    "id": "terranexus:pink_garnet"
+  }
+}

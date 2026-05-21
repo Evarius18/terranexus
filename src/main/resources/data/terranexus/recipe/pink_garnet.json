@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    "terranexus:pink_garnet_block"
+  ],
+  "result": {
+    "count": 9,
+    "id": "terranexus:pink_garnet"
+  }
+}
