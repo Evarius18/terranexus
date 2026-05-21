@@ -1,5 +1,7 @@
 package net.evarius.terranexus;
 
+import net.evarius.terranexus.block.ModBlocks;
+import net.evarius.terranexus.item.ModItemGroups;
 import net.evarius.terranexus.item.ModItems;
 import net.fabricmc.api.ModInitializer;
 
@@ -12,7 +14,10 @@ public class TerraNexus implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+        ModItemGroups.registerItemGroups();
+
         ModItems.registerModItems();
-		LOGGER.info("Hello Fabric world!");
+        ModBlocks.registerModBlocks();
+		LOGGER.info("Modifikation wurde initialisiert");
 	}
 }

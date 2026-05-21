@@ -1,5 +1,14 @@
 {
   "item.terranexus.pink_garnet": "Pink Garnet",
-  "item.terranexus.raw_pink_garnet": "Raw Pink Garnet"
+  "item.terranexus.raw_pink_garnet": "Raw Pink Garnet",
 
+
+  "block.terranexus.pink_garnet_block": "Block of Pink Garnet",
+  "item.terranexus.pink_garnet_block": "Block of Pink Garnet",
+  "block.terranexus.raw_pink_garnet_block": "Raw Block of Pink Garnet",
+  "item.terranexus.raw_pink_garnet_block": "Raw Block of Pink Garnet",
+
+
+  "itemgroup.terranexus.pink_garnet_items": "Pink Garnet Items",
+  "itemgroup.tutorialmod.pink_garnet_blocks": "Pink Garnet Blocks"
 }
