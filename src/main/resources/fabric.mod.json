@@ -1,0 +1,37 @@
+{
+	"schemaVersion": 1,
+	"id": "terranexus",
+	"version": "${version}",
+	"name": "Terra Nexus",
+	"description": "TerraNexus RolePlay Mod",
+	"authors": [
+		"Me!"
+	],
+	"contact": {
+		"homepage": "https://terranexus.eu",
+		"sources": "https://github.com/"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/terranexus/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"net.evarius.terranexus.TerraNexus"
+		],
+		"fabric-datagen": [
+			"net.evarius.terranexus.TerraNexusDataGenerator"
+		],
+      "client": [
+        "net.evarius.terranexus.TerraNexusClient"
+      ]
+	},
+	"mixins": [
+		"terranexus.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.2",
+		"minecraft": "~1.21.8",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
