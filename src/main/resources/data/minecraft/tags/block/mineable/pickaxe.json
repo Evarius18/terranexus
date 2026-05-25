@@ -1,9 +1,9 @@
 {
   "replace": false,
   "values": [
-    "tutorialmod:pink_garnet_block",
-    "tutorialmod:raw_pink_garnet_block",
-    "tutorialmod:pink_garnet_ore",
-    "tutorialmod:pink_garnet_deepslate_ore"
+    "terranexus:pink_garnet_block",
+    "terranexus:raw_pink_garnet_block",
+    "terranexus:pink_garnet_ore",
+    "terranexus:pink_garnet_deepslate_ore"
   ]
 }
