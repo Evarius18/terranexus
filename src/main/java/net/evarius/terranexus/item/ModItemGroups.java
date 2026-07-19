@@ -44,6 +44,7 @@ public class ModItemGroups {
                         entries.add(ModBlocks.STREET_DRAIN_C250);
                         entries.add(ModBlocks.CURB_DRAIN_C250);
                         entries.add(ModBlocks.DRAINAGE_CHANNEL_B125);
+                        entries.add(ModBlocks.MANAGEMENT_COMPUTER);
                     }).build());
 
     public static final ItemGroup PINK_GARNET_ITEMS_GROUP = Registry.register(Registries.ITEM_GROUP,

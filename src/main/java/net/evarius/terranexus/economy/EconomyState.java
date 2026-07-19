@@ -29,6 +29,9 @@ public class EconomyState extends PersistentState {
     }
 
     public long balance(UUID owner) { return balances.getOrDefault(owner.toString(), 0L); }
+    public long balance(String account) { return balances.getOrDefault(account, 0L); }
+    public static String playerAccount(UUID owner) { return owner.toString(); }
+    public static String institutionAccount(String id) { return "institution:" + id; }
 
     public void deposit(UUID owner, long cents) {
         if (cents < 0) throw new IllegalArgumentException("Negative deposit");
@@ -44,9 +47,21 @@ public class EconomyState extends PersistentState {
     }
 
     public boolean transfer(UUID from, UUID to, long cents) {
-        if (!withdraw(from, cents)) return false;
-        deposit(to, cents);
-        return true;
+        return transfer(playerAccount(from), playerAccount(to), cents);
+    }
+
+    public boolean transfer(String from, String to, long cents) {
+        if (cents <= 0 || from.equals(to)) return false;
+        long source = balance(from), target = balance(to);
+        if (source < cents) return false;
+        final long updatedTarget;
+        try { updatedTarget = Math.addExact(target, cents); } catch (ArithmeticException overflow) { return false; }
+        balances.put(from, source - cents); balances.put(to, updatedTarget); markDirty(); return true;
+    }
+
+    public void deposit(String account, long cents) {
+        if (cents < 0) throw new IllegalArgumentException("Negative deposit");
+        balances.merge(account, cents, Math::addExact); markDirty();
     }
 
     public static String format(long cents) {

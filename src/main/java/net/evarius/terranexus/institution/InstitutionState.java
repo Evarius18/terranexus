@@ -36,6 +36,14 @@ public class InstitutionState extends PersistentState {
         return institutions.values().stream().filter(i -> i.members().containsKey(player.toString())).toList();
     }
 
+    public List<Institution> all() { return institutions.values().stream().sorted(java.util.Comparator.comparing(Institution::name)).toList(); }
+    public Institution get(String id) { return institutions.get(id); }
+    public boolean mayManage(String institutionId, UUID player) {
+        Institution institution = institutions.get(institutionId); if (institution == null) return false;
+        List<String> roles = institution.members().getOrDefault(player.toString(), List.of());
+        return institution.ownerUuid().equals(player.toString()) || roles.contains("owner") || roles.contains("manager");
+    }
+
     public void addMember(String institutionId, UUID player, String role) {
         Institution old = institutions.get(institutionId); if (old == null) return;
         Map<String,List<String>> members = new HashMap<>(old.members());

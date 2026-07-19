@@ -50,17 +50,19 @@ public final class ImmigrationScreen {
             }
             String rpName = identity.firstName() + " " + identity.lastName();
             display(inventory, infoSlot, Items.PLAYER_HEAD, rpName, identity.citizenNumber());
-            actions.put(infoSlot, ignored -> IdentityScreen.open(officer, identity));
+            actions.put(infoSlot, ignored -> CitizenRecordScreen.open(officer, target));
             if (identities.isApproved(target.getUuid())) {
                 display(inventory, approveSlot, Items.LIME_DYE, "Freigegeben", "Einreise ist bestätigt");
                 display(inventory, issueSlot, Items.PAPER, "Ausweis ausstellen", "Dokument an " + rpName + " übergeben");
                 actions.put(issueSlot, ignored -> {
+                    if (!AuthorityState.mayManageIdentity(officer)) return;
                     target.giveItemStack(CitizenIdCardItem.createCard(ModItems.CITIZEN_ID_CARD, identity));
                     open(officer);
                 });
             } else {
                 display(inventory, approveSlot, Items.YELLOW_DYE, "Einreise freigeben", "Als Bediensteter verbindlich bestätigen");
                 actions.put(approveSlot, ignored -> {
+                    if (!AuthorityState.mayManageIdentity(officer)) return;
                     identities.approve(target.getUuid(), officer.getUuid());
                     open(officer);
                 });
@@ -74,11 +76,7 @@ public final class ImmigrationScreen {
     }
 
     private static boolean mayUse(ServerPlayerEntity player) {
-        if (player.hasPermissionLevel(2)) return true;
-        AuthorityState state = AuthorityState.get(player.getServer());
-        return state.has(player.getUuid(), AuthorityState.CIVIL_REGISTRAR)
-                || state.has(player.getUuid(), AuthorityState.IMMIGRATION_OFFICER)
-                || state.has(player.getUuid(), AuthorityState.SUPPORTER);
+        return AuthorityState.mayManageIdentity(player);
     }
 
     private static void display(SimpleInventory inventory, int slot, Item item, String name, String detail) {

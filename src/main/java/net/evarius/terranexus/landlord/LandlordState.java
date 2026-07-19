@@ -19,10 +19,21 @@ public class LandlordState extends PersistentState {
     public LandlordState(){this(new HashMap<>());} private LandlordState(Map<String,LandProperty> p){properties=new HashMap<>(p);}
     public static LandlordState get(MinecraftServer s){return s.getOverworld().getPersistentStateManager().getOrCreate(TYPE);}
     public List<LandProperty> owned(UUID u){return properties.values().stream().filter(p->p.ownerType().equals("player")&&p.ownerId().equals(u.toString())).toList();}
+    public List<LandProperty> all(){return properties.values().stream().sorted(Comparator.comparing(LandProperty::name)).toList();}
+    public LandProperty get(String id){return properties.get(id);}
     public LandProperty at(String dim,BlockPos p){return properties.values().stream().filter(x->x.contains(dim,p.getX(),p.getY(),p.getZ())).findFirst().orElse(null);}
     public boolean add(LandProperty p){
-        for(LandProperty old:properties.values()) if(old.dimension().equals(p.dimension()) && boxesOverlap(old,p)) return false;
+        if(overlapsOther(p,p.id())) return false;
         properties.put(p.id(),p);markDirty();return true;
+    }
+    public boolean update(LandProperty p){
+        if(!properties.containsKey(p.id())||overlapsOther(p,p.id()))return false;
+        properties.put(p.id(),p);markDirty();return true;
+    }
+    public boolean remove(String id){if(properties.remove(id)!=null){markDirty();return true;}return false;}
+    private boolean overlapsOther(LandProperty p,String ignoredId){
+        for(LandProperty old:properties.values()) if(!old.id().equals(ignoredId)&&old.dimension().equals(p.dimension())&&boxesOverlap(old,p))return true;
+        return false;
     }
     private boolean boxesOverlap(LandProperty a,LandProperty b){
         if(!(a.minX()<=b.maxX()&&a.maxX()>=b.minX()&&a.minY()<=b.maxY()&&a.maxY()>=b.minY()&&a.minZ()<=b.maxZ()&&a.maxZ()>=b.minZ()))return false;
@@ -36,4 +47,5 @@ public class LandlordState extends PersistentState {
     public static LandProperty chunk(String name,UUID owner,String dim,int cx,int cz){return new LandProperty(UUID.randomUUID().toString(),name,"player",owner.toString(),dim,"chunk",cx*16,-64,cz*16,cx*16+15,319,cz*16+15,List.of());}
     public static LandProperty cuboid(String name,UUID owner,String dim,BlockPos a,BlockPos b){return new LandProperty(UUID.randomUUID().toString(),name,"player",owner.toString(),dim,"cuboid",Math.min(a.getX(),b.getX()),Math.min(a.getY(),b.getY()),Math.min(a.getZ(),b.getZ()),Math.max(a.getX(),b.getX()),Math.max(a.getY(),b.getY()),Math.max(a.getZ(),b.getZ()),List.of());}
     public static LandProperty polygon(String name,UUID owner,String dim,List<BlockPos> points){int minX=points.stream().mapToInt(BlockPos::getX).min().orElse(0),maxX=points.stream().mapToInt(BlockPos::getX).max().orElse(0),minZ=points.stream().mapToInt(BlockPos::getZ).min().orElse(0),maxZ=points.stream().mapToInt(BlockPos::getZ).max().orElse(0);return new LandProperty(UUID.randomUUID().toString(),name,"player",owner.toString(),dim,"polygon",minX,-64,minZ,maxX,319,maxZ,points.stream().map(p->p.getX()+","+p.getZ()).toList());}
+    public static LandProperty editedPolygon(LandProperty old,List<BlockPos> points){int minX=points.stream().mapToInt(BlockPos::getX).min().orElse(0),maxX=points.stream().mapToInt(BlockPos::getX).max().orElse(0),minZ=points.stream().mapToInt(BlockPos::getZ).min().orElse(0),maxZ=points.stream().mapToInt(BlockPos::getZ).max().orElse(0);return new LandProperty(old.id(),old.name(),old.ownerType(),old.ownerId(),old.dimension(),"polygon",minX,old.minY(),minZ,maxX,old.maxY(),maxZ,points.stream().map(p->p.getX()+","+p.getZ()).toList());}
 }

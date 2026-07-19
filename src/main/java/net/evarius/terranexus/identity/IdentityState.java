@@ -84,5 +84,9 @@ public class IdentityState extends PersistentState {
         return approvals.get(citizen.toString());
     }
 
+    public void revokeApproval(UUID citizen) {
+        if (approvals.remove(citizen.toString()) != null) markDirty();
+    }
+
     public record ApprovalRecord(String approvedBy, long approvedAt) {}
 }

@@ -5,6 +5,7 @@ import net.evarius.terranexus.block.custom.RoadFurnitureBlock;
 import net.evarius.terranexus.block.custom.DelineatorBlock;
 import net.evarius.terranexus.block.custom.GuardrailBlock;
 import net.evarius.terranexus.block.custom.OpenableManholeBlock;
+import net.evarius.terranexus.block.custom.ManagementComputerBlock;
 import net.minecraft.block.GlazedTerracottaBlock;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.block.AbstractBlock;
@@ -92,6 +93,9 @@ public class ModBlocks {
             AbstractBlock.Settings.create().strength(4f, 8f).requiresTool().sounds(BlockSoundGroup.METAL), GlazedTerracottaBlock::new);
     public static final Block DRAINAGE_CHANNEL_B125 = registerBlock("drainage_channel_b125",
             AbstractBlock.Settings.create().strength(3f, 7f).requiresTool().sounds(BlockSoundGroup.METAL), GlazedTerracottaBlock::new);
+    public static final Block MANAGEMENT_COMPUTER = registerBlock("management_computer",
+            AbstractBlock.Settings.create().strength(2.5f, 5f).requiresTool().sounds(BlockSoundGroup.METAL).nonOpaque(),
+            ManagementComputerBlock::new);
 
     // Pink Garnet Blocks
     public static Block PINK_GARNET_BLOCK = registerBlock("pink_garnet_block",
@@ -158,6 +162,7 @@ public class ModBlocks {
             entries.add(STREET_DRAIN_C250);
             entries.add(CURB_DRAIN_C250);
             entries.add(DRAINAGE_CHANNEL_B125);
+            entries.add(MANAGEMENT_COMPUTER);
         });
     }
 }

@@ -24,7 +24,15 @@ public class ManagementTabletItem extends Item {
     @Override
     public ActionResult use(World world, PlayerEntity user, Hand hand) {
         if (world instanceof ServerWorld serverWorld && user instanceof ServerPlayerEntity player) {
-            ManagementHubScreen.open(player);
+            AuthorityState authority = AuthorityState.get(serverWorld.getServer());
+            boolean immigrationStaff = authority.has(player.getUuid(), AuthorityState.CIVIL_REGISTRAR)
+                    || authority.has(player.getUuid(), AuthorityState.IMMIGRATION_OFFICER)
+                    || authority.has(player.getUuid(), AuthorityState.SUPPORTER);
+            if (immigrationStaff) {
+                ImmigrationScreen.open(player);
+            } else {
+                ManagementHubScreen.open(player);
+            }
         }
         return ActionResult.SUCCESS;
     }

@@ -23,22 +23,6 @@ public final class IdentityCommands {
                         .then(literal("show").requires(AuthorityState::mayProcessImmigration)
                                 .then(argument("player", EntityArgumentType.player())
                                         .executes(context -> show(context.getSource(), EntityArgumentType.getPlayer(context, "player")))))
-                        .then(literal("create").requires(AuthorityState::mayProcessImmigration)
-                                .then(argument("player", EntityArgumentType.player())
-                                .then(argument("firstName", StringArgumentType.word())
-                                .then(argument("lastName", StringArgumentType.word())
-                                .then(argument("birthDate", StringArgumentType.word())
-                                .then(argument("birthPlace", StringArgumentType.word())
-                                .then(argument("birthCountry", StringArgumentType.word())
-                                .then(argument("nationality", StringArgumentType.word())
-                                        .executes(context -> create(context.getSource(),
-                                                EntityArgumentType.getPlayer(context, "player"),
-                                                StringArgumentType.getString(context, "firstName"),
-                                                StringArgumentType.getString(context, "lastName"),
-                                                StringArgumentType.getString(context, "birthDate"),
-                                                StringArgumentType.getString(context, "birthPlace"),
-                                                StringArgumentType.getString(context, "birthCountry"),
-                                                StringArgumentType.getString(context, "nationality")))))))))))
                         .then(literal("set").requires(AuthorityState::mayProcessImmigration)
                                 .then(argument("player", EntityArgumentType.player())
                                 .then(argument("field", StringArgumentType.word())
@@ -54,19 +38,6 @@ public final class IdentityCommands {
                                 .then(argument("player", EntityArgumentType.player())
                                         .executes(context -> issue(context.getSource(), EntityArgumentType.getPlayer(context, "player")))))
         ));
-    }
-
-    private static int create(ServerCommandSource source, ServerPlayerEntity player, String firstName, String lastName,
-                              String birthDate, String birthPlace, String birthCountry, String nationality) {
-        IdentityState state = IdentityState.get(source.getServer());
-        if (state.get(player.getUuid()) != null) {
-            source.sendError(Text.literal("Für diesen Spieler existiert bereits eine Identität."));
-            return 0;
-        }
-        CitizenIdentity identity = state.create(player.getUuid(), firstName, lastName, birthDate, birthPlace, birthCountry, nationality);
-        RoleplayNames.apply(player);
-        source.sendFeedback(() -> Text.literal("Identität " + identity.citizenNumber() + " wurde angelegt."), true);
-        return 1;
     }
 
     private static int set(ServerCommandSource source, ServerPlayerEntity player, String field, String value) {

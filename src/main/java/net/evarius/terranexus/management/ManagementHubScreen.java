@@ -51,11 +51,7 @@ public final class ManagementHubScreen {
     }
 
     private static boolean mayManage(ServerPlayerEntity player) {
-        if (player.hasPermissionLevel(2)) return true;
-        AuthorityState state = AuthorityState.get(player.getServer());
-        return state.has(player.getUuid(), AuthorityState.CIVIL_REGISTRAR)
-                || state.has(player.getUuid(), AuthorityState.IMMIGRATION_OFFICER)
-                || state.has(player.getUuid(), AuthorityState.SUPPORTER);
+        return AuthorityState.mayManageIdentity(player);
     }
 
     static void display(SimpleInventory inventory, int slot, Item item, String name, String detail) {

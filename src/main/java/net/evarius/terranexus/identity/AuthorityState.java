@@ -19,6 +19,7 @@ public class AuthorityState extends PersistentState {
     public static final String CIVIL_REGISTRAR = "civil_registrar";
     public static final String IMMIGRATION_OFFICER = "immigration_officer";
     public static final String SUPPORTER = "supporter";
+    public static final String LAND_REGISTRAR = "land_registrar";
 
     private static final Codec<AuthorityState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.unboundedMap(Codec.STRING, Codec.STRING.listOf()).optionalFieldOf("roles", Map.of()).forGetter(state -> state.roles)
@@ -54,16 +55,23 @@ public class AuthorityState extends PersistentState {
     }
 
     public static boolean mayProcessImmigration(ServerCommandSource source) {
-        if (source.hasPermissionLevel(2)) return true;
         if (!(source.getEntity() instanceof ServerPlayerEntity player)) return false;
-        AuthorityState state = get(source.getServer());
+        return mayManageIdentity(player);
+    }
+
+    public static boolean mayManageIdentity(ServerPlayerEntity player) {
+        AuthorityState state = get(player.getServer());
         return state.has(player.getUuid(), CIVIL_REGISTRAR)
                 || state.has(player.getUuid(), IMMIGRATION_OFFICER)
                 || state.has(player.getUuid(), SUPPORTER);
     }
 
+    public static boolean mayManageLand(ServerPlayerEntity player) {
+        return get(player.getServer()).has(player.getUuid(), LAND_REGISTRAR);
+    }
+
     public static boolean isKnownRole(String role) {
-        return CIVIL_REGISTRAR.equals(role) || IMMIGRATION_OFFICER.equals(role) || SUPPORTER.equals(role);
+        return CIVIL_REGISTRAR.equals(role) || IMMIGRATION_OFFICER.equals(role) || SUPPORTER.equals(role) || LAND_REGISTRAR.equals(role);
     }
 
     public static String roleLabel(String role) {
@@ -71,6 +79,7 @@ public class AuthorityState extends PersistentState {
             case CIVIL_REGISTRAR -> "Verwaltungs-/Standesamtsbedienstete Person";
             case IMMIGRATION_OFFICER -> "Bedienstete Person der Einreisebehörde";
             case SUPPORTER -> "Supporter/Whitelister im Einreisedienst";
+            case LAND_REGISTRAR -> "Bedienstete Person der Grundstücksverwaltung";
             default -> role;
         };
     }

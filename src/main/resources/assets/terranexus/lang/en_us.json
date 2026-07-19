@@ -69,5 +69,7 @@
   "block.terranexus.drainage_channel_b125": "Drainage Channel B 125",
   "item.terranexus.drainage_channel_b125": "Drainage Channel B 125",
   "item.terranexus.citizen_id_card": "TerraNexus Citizen ID",
-  "item.terranexus.management_tablet": "Citizen Management Device"
+  "item.terranexus.management_tablet": "Citizen Management Device",
+  "block.terranexus.management_computer": "Administration Computer",
+  "item.terranexus.management_computer": "Administration Computer"
 }

@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import java.util.List;
+import java.util.UUID;
 
 public record LandProperty(String id, String name, String ownerType, String ownerId, String dimension,
                            String regionType, int minX, int minY, int minZ, int maxX, int maxY, int maxZ,
@@ -30,5 +31,19 @@ public record LandProperty(String id, String name, String ownerType, String owne
             if(((zi>z)!=(zj>z)) && x < (xj-xi)*(z-zi)/(zj-zi)+xi) inside=!inside;
         }
         return inside;
+    }
+
+    public boolean isOwnedBy(UUID player) {
+        return ownerType.equals("player") && ownerId.equals(player.toString());
+    }
+
+    public LandProperty withName(String newName) {
+        return new LandProperty(id, newName, ownerType, ownerId, dimension, regionType,
+                minX, minY, minZ, maxX, maxY, maxZ, polygonPoints);
+    }
+
+    public LandProperty withOwner(String newOwnerType, String newOwnerId) {
+        return new LandProperty(id, name, newOwnerType, newOwnerId, dimension, regionType,
+                minX, minY, minZ, maxX, maxY, maxZ, polygonPoints);
     }
 }

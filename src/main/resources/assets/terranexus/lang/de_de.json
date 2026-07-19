@@ -69,5 +69,7 @@
   "block.terranexus.drainage_channel_b125": "Entwässerungsrinne B 125",
   "item.terranexus.drainage_channel_b125": "Entwässerungsrinne B 125",
   "item.terranexus.citizen_id_card": "TerraNexus-Personalausweis",
-  "item.terranexus.management_tablet": "Bürger- und Verwaltungsgerät"
+  "item.terranexus.management_tablet": "Bürger- und Verwaltungsgerät",
+  "block.terranexus.management_computer": "Verwaltungs-PC",
+  "item.terranexus.management_computer": "Verwaltungs-PC"
 }

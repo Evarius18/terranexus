@@ -48,7 +48,16 @@ public class TextInputScreenHandler extends AnvilScreenHandler {
     @Override
     protected void onTakeOutput(PlayerEntity player, ItemStack stack) {
         String confirmed = value;
+        setCursorStack(ItemStack.EMPTY);
+        output.setStack(0, ItemStack.EMPTY);
+        input.setStack(0, ItemStack.EMPTY);
         ((net.minecraft.server.network.ServerPlayerEntity) player).closeHandledScreen();
         player.getServer().execute(() -> onConfirm.accept(confirmed));
+    }
+
+    @Override
+    public ItemStack quickMove(PlayerEntity player, int slot) {
+        if (slot == getResultSlotIndex()) return ItemStack.EMPTY;
+        return super.quickMove(player, slot);
     }
 }

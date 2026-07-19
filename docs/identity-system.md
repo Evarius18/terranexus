@@ -9,7 +9,6 @@ ID-card item data is only a reference. Using the card always resolves the curren
 Administrative commands require permission level 2.
 
 ```text
-/identity create <player> <firstName> <lastName> <birthDate> <birthPlace> <birthCountry> <nationality>
 /identity set <player> <field> <value>
 /identity show <player>
 /identity issue <player>
@@ -28,19 +27,20 @@ spaces are supported by `set` because the final value consumes the rest of the c
 Example:
 
 ```text
-/identity create Steve Max Mustermann 1990-05-23 Berlin Deutschland deutsch
+/identity set Steve geburtsdatum 23.05.1990
 /identity set Steve adresse Hauptstraße 12, TerraNexus
 /identity set Steve geschlecht divers
 /identity issue Steve
 ```
 
-The initial `create` arguments are single words. Multi-word places, countries, and names can be corrected
-afterward with `/identity set`.
+New identities cannot be created through a command. Authorized staff must select an unregistered online
+player in the immigration GUI and complete the guided form.
 
 ## Immigration workflow
 
-New identities start without immigration approval. Only operators or players assigned the
-`civil_registrar`, `immigration_officer`, or `supporter` role can process them. Approval must be performed
+New identities start without immigration approval. Only players explicitly assigned the `civil_registrar`,
+`immigration_officer`, or `supporter` role can process them. Operator status alone does not grant access.
+Operators or the server console are only the bootstrap authority for granting/revoking these roles. Approval must be performed
 by a logged-in officer and stores the officer UUID and timestamp. An ID card cannot be issued or validated
 before approval.
 
@@ -49,6 +49,13 @@ citizens by roleplay name and provides buttons for reviewing, approving, and iss
 Online players without a record are listed separately. Selecting `Bürgerakte anlegen` starts an eight-step
 GUI wizard for first name, last name, birth date, birth place, birth country, nationality, gender, and address.
 The resulting identity remains pending until a second explicit approval action.
+
+Selecting an existing citizen opens an editable citizen record. Every data tile launches a validated input
+form. Staff can change all personal fields, approve or revoke immigration, and issue a replacement ID from
+the same screen. Revoking approval immediately invalidates previously issued cards during server validation.
+
+The placeable, horizontally rotatable administration computer opens the same role-aware GUI on right-click.
+Authorized staff receive the immigration workstation; citizens receive their personal management hub.
 
 ## Currency configuration
 
