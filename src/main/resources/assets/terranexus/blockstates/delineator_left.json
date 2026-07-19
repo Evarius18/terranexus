@@ -1,0 +1,1 @@
+{"variants":{"facing=north":{"model":"terranexus:block/delineator_left"},"facing=east":{"model":"terranexus:block/delineator_left","y":90},"facing=south":{"model":"terranexus:block/delineator_left","y":180},"facing=west":{"model":"terranexus:block/delineator_left","y":270}}}

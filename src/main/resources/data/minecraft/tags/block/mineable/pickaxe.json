@@ -1,9 +1,1 @@
-{
-  "replace": false,
-  "values": [
-    "terranexus:pink_garnet_block",
-    "terranexus:raw_pink_garnet_block",
-    "terranexus:pink_garnet_ore",
-    "terranexus:pink_garnet_deepslate_ore"
-  ]
-}
+{"replace":false,"values":["terranexus:pink_garnet_block","terranexus:raw_pink_garnet_block","terranexus:pink_garnet_ore","terranexus:pink_garnet_deepslate_ore","terranexus:asphalt","terranexus:asphalt_slab","terranexus:asphalt_stairs","terranexus:worn_asphalt","terranexus:worn_asphalt_slab","terranexus:worn_asphalt_stairs","terranexus:white_line_asphalt","terranexus:yellow_line_asphalt","terranexus:tar","terranexus:guardrail","terranexus:guardrail_end","terranexus:bridge_guardrail","terranexus:bridge_concrete","terranexus:bridge_concrete_slab","terranexus:bridge_steel","terranexus:bridge_expansion_joint","terranexus:road_manhole_d400","terranexus:path_manhole_b125","terranexus:street_drain_c250","terranexus:curb_drain_c250","terranexus:drainage_channel_b125"]}
