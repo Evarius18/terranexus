@@ -67,5 +67,7 @@
   "block.terranexus.curb_drain_c250": "Curb Drain C 250",
   "item.terranexus.curb_drain_c250": "Curb Drain C 250",
   "block.terranexus.drainage_channel_b125": "Drainage Channel B 125",
-  "item.terranexus.drainage_channel_b125": "Drainage Channel B 125"
+  "item.terranexus.drainage_channel_b125": "Drainage Channel B 125",
+  "item.terranexus.citizen_id_card": "TerraNexus Citizen ID",
+  "item.terranexus.management_tablet": "Citizen Management Device"
 }

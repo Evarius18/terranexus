@@ -67,5 +67,7 @@
   "block.terranexus.curb_drain_c250": "Bordsteinablauf C 250",
   "item.terranexus.curb_drain_c250": "Bordsteinablauf C 250",
   "block.terranexus.drainage_channel_b125": "Entwässerungsrinne B 125",
-  "item.terranexus.drainage_channel_b125": "Entwässerungsrinne B 125"
+  "item.terranexus.drainage_channel_b125": "Entwässerungsrinne B 125",
+  "item.terranexus.citizen_id_card": "TerraNexus-Personalausweis",
+  "item.terranexus.management_tablet": "Bürger- und Verwaltungsgerät"
 }
