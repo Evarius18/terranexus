@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.security.SecureRandom;
+import java.util.List;
 
 public class IdentityState extends PersistentState {
     private static final Codec<Map<String, CitizenIdentity>> IDENTITIES_CODEC = Codec.unboundedMap(Codec.STRING, CitizenIdentity.CODEC);
@@ -45,6 +46,11 @@ public class IdentityState extends PersistentState {
 
     public CitizenIdentity get(UUID playerUuid) {
         return identities.get(playerUuid.toString());
+    }
+
+    public List<CitizenIdentity> allApproved() {
+        return identities.values().stream().filter(identity -> approvals.containsKey(identity.playerUuid()))
+                .sorted(java.util.Comparator.comparing(CitizenIdentity::lastName).thenComparing(CitizenIdentity::firstName)).toList();
     }
 
     public CitizenIdentity create(UUID playerUuid, String firstName, String lastName, String birthDate,

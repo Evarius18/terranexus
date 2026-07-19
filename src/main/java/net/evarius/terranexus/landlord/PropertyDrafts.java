@@ -11,8 +11,7 @@ import java.util.UUID;
 public final class PropertyDrafts {
     private PropertyDrafts() {}
 
-    public static final Map<UUID, BlockPos> POS1 = new HashMap<>(), POS2 = new HashMap<>();
-    public static final Map<UUID, List<BlockPos>> POLYGONS = new HashMap<>();
+    public static final Map<UUID, BlockPos> POS1 = new HashMap<>();
     private static final Map<UUID, EditDraft> EDITS = new HashMap<>();
 
     public static EditDraft edit(UUID player) { return EDITS.get(player); }

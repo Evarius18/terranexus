@@ -23,11 +23,13 @@ atomically. Operators can bootstrap funds with
 
 Civil registrars and operators can create institutions through a guided GUI. An institution has a UUID,
 type, owner, member-role map, and its own persistent economy account. The current GUI supports creation,
-listing, account display, and adding online members.
+listing, account display, and adding online members. Fixed-value fields such as institution type and citizen
+gender use XP-free click-selection menus; the anvil input is reserved for validated free text.
 
 ## Properties
 
-Only players with the explicit `land_registrar` role create and assign new property. The property GUI supports three region types:
+The building authority uses tiered `land_surveyor`, `land_clerk`, and `land_administrator` roles; the legacy
+`land_registrar` role remains a full-access compatibility role. The property GUI supports three region types:
 
 - complete chunks;
 - 3D cuboids using two current-position points;
@@ -41,5 +43,6 @@ overlap is evaluated at block resolution rather than merely rejecting intersecti
 Properties can be assigned to approved citizens or institutions. Block breaking and placement are denied
 inside property regions unless the player owns the property, manages the owning institution, or has operator bypass.
 
-The current implementation is the ownership and geometry foundation. Leases, deposits, detailed member
-permission matrices, offline recipient browsing, and sale/rent workflows are the next layer.
+The ownership layer includes atomic property sales, tenant-approved leases, deposits, recurring rent,
+administrative hierarchies and accounts, detailed public/per-citizen permission matrices, and offline citizen
+selection. See `docs/landlord-und-geldsystem.md` for the German user guide.

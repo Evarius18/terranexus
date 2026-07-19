@@ -18,6 +18,7 @@ public final class TerraNexusConfig {
     public String currencyName = "TerraNexus Euro";
     public String currencySymbol = "TN€";
     public int currencyDecimals = 2;
+    public int rentDayDurationMinutes = 1440;
 
     public static TerraNexusConfig get() {
         return INSTANCE;
@@ -46,5 +47,6 @@ public final class TerraNexusConfig {
         if (currencyName == null || currencyName.isBlank()) currencyName = "TerraNexus Euro";
         if (currencySymbol == null || currencySymbol.isBlank()) currencySymbol = "TN€";
         currencyDecimals = Math.max(0, Math.min(currencyDecimals, 2));
+        rentDayDurationMinutes = Math.max(1, rentDayDurationMinutes);
     }
 }

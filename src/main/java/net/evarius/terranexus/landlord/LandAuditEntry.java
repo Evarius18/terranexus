@@ -1,0 +1,3 @@
+package net.evarius.terranexus.landlord;
+import com.mojang.serialization.Codec;import com.mojang.serialization.codecs.RecordCodecBuilder;
+public record LandAuditEntry(long timestamp,String actorId,String action,String propertyId,String details){public static final Codec<LandAuditEntry> CODEC=RecordCodecBuilder.create(i->i.group(Codec.LONG.fieldOf("timestamp").forGetter(LandAuditEntry::timestamp),Codec.STRING.fieldOf("actor_id").forGetter(LandAuditEntry::actorId),Codec.STRING.fieldOf("action").forGetter(LandAuditEntry::action),Codec.STRING.fieldOf("property_id").forGetter(LandAuditEntry::propertyId),Codec.STRING.fieldOf("details").forGetter(LandAuditEntry::details)).apply(i,LandAuditEntry::new));}

@@ -20,6 +20,7 @@ import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -47,6 +48,7 @@ public final class CitizenRecordScreen {
         addField(inventory, actions, 28, Items.MAP, "Geburtsland", "geburtsland", identity::birthCountry, officer, citizen);
         addField(inventory, actions, 30, Items.WRITABLE_BOOK, "Nationalität", "nationalitaet", identity::nationality, officer, citizen);
         addField(inventory, actions, 32, Items.PLAYER_HEAD, "Geschlecht", "geschlecht", identity::gender, officer, citizen);
+        actions.put(32,ignored->openGenderSelection(officer,citizen));
         addField(inventory, actions, 34, Items.OAK_DOOR, "Meldeadresse", "adresse", identity::address, officer, citizen);
 
         boolean approved = state.isApproved(citizen.getUuid());
@@ -124,4 +126,5 @@ public final class CitizenRecordScreen {
         }
         return null;
     }
+    private static void openGenderSelection(ServerPlayerEntity officer,ServerPlayerEntity citizen){List<SelectionMenuScreen.Option> options=java.util.List.of(new SelectionMenuScreen.Option("Weiblich","Weiblich","Amtliche Auswahl",Items.MAGENTA_DYE),new SelectionMenuScreen.Option("Männlich","Männlich","Amtliche Auswahl",Items.BLUE_DYE),new SelectionMenuScreen.Option("Divers","Divers","Amtliche Auswahl",Items.PURPLE_DYE),new SelectionMenuScreen.Option("Keine Angabe","Keine Angabe","Ohne Geschlechtseintrag",Items.GRAY_DYE));SelectionMenuScreen.open(officer,"Geschlecht ändern",options,value->{if(!AuthorityState.mayManageIdentity(officer)){officer.sendMessage(Text.literal("Deine Verwaltungsberechtigung ist nicht mehr gültig.").formatted(Formatting.RED),false);return;}IdentityState state=IdentityState.get(officer.getServer());CitizenIdentity old=state.get(citizen.getUuid());if(old!=null)state.put(old.withField("geschlecht",value));open(officer,citizen);},()->open(officer,citizen));}
 }

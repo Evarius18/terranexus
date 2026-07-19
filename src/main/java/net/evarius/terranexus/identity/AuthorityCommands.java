@@ -20,15 +20,16 @@ public final class AuthorityCommands {
                                     ServerPlayerEntity player = EntityArgumentType.getPlayer(context, "player");
                                     String role = StringArgumentType.getString(context, "role").toLowerCase();
                                     if (!AuthorityState.isKnownRole(role)) {
-                                        context.getSource().sendError(Text.literal("Rollen: civil_registrar, immigration_officer, supporter, land_registrar"));
+                                        context.getSource().sendError(Text.literal("Rollen: civil_registrar, immigration_officer, supporter, land_surveyor, land_clerk, land_administrator (land_registrar bleibt kompatibel)"));
                                         return 0;
                                     }
                                     AuthorityState.get(context.getSource().getServer()).grant(player.getUuid(), role);
                                     CitizenIdentity identity = IdentityState.get(context.getSource().getServer()).get(player.getUuid());
                                     String name = identity == null ? "Unregistrierter Bürger" : identity.firstName() + " " + identity.lastName();
                                     String roleLabel = AuthorityState.roleLabel(role);
+                                    String scope=role.startsWith("land_")?"für Aufgaben des Bauamts":"für Einreisen und Bürgerakten";
                                     context.getSource().sendFeedback(() -> Text.literal("Verwaltungsberechtigung erteilt: "
-                                            + name + " ist ab sofort als „" + roleLabel + "“ zur Bearbeitung von Einreisen und Bürgerakten berechtigt."), true);
+                                            + name + " ist ab sofort als „" + roleLabel + "“ "+scope+" berechtigt."), true);
                                     player.sendMessage(Text.literal("Du wurdest als „" + roleLabel
                                             + "“ für die TerraNexus-Verwaltung autorisiert."), false);
                                     return 1;

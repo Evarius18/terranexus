@@ -20,6 +20,9 @@ public class AuthorityState extends PersistentState {
     public static final String IMMIGRATION_OFFICER = "immigration_officer";
     public static final String SUPPORTER = "supporter";
     public static final String LAND_REGISTRAR = "land_registrar";
+    public static final String LAND_SURVEYOR = "land_surveyor";
+    public static final String LAND_CLERK = "land_clerk";
+    public static final String LAND_ADMINISTRATOR = "land_administrator";
 
     private static final Codec<AuthorityState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.unboundedMap(Codec.STRING, Codec.STRING.listOf()).optionalFieldOf("roles", Map.of()).forGetter(state -> state.roles)
@@ -67,11 +70,26 @@ public class AuthorityState extends PersistentState {
     }
 
     public static boolean mayManageLand(ServerPlayerEntity player) {
-        return get(player.getServer()).has(player.getUuid(), LAND_REGISTRAR);
+        return mayUseLandOffice(player);
+    }
+
+    public static boolean mayUseLandOffice(ServerPlayerEntity player) {
+        AuthorityState state=get(player.getServer());UUID id=player.getUuid();
+        return state.has(id,LAND_REGISTRAR)||state.has(id,LAND_SURVEYOR)||state.has(id,LAND_CLERK)||state.has(id,LAND_ADMINISTRATOR);
+    }
+    public static boolean maySurveyLand(ServerPlayerEntity player) {
+        AuthorityState state=get(player.getServer());UUID id=player.getUuid();return state.has(id,LAND_REGISTRAR)||state.has(id,LAND_SURVEYOR)||state.has(id,LAND_ADMINISTRATOR);
+    }
+    public static boolean mayProcessLandRecords(ServerPlayerEntity player) {
+        AuthorityState state=get(player.getServer());UUID id=player.getUuid();return state.has(id,LAND_REGISTRAR)||state.has(id,LAND_CLERK)||state.has(id,LAND_ADMINISTRATOR);
+    }
+    public static boolean mayAdministerLand(ServerPlayerEntity player) {
+        AuthorityState state=get(player.getServer());UUID id=player.getUuid();return state.has(id,LAND_REGISTRAR)||state.has(id,LAND_ADMINISTRATOR);
     }
 
     public static boolean isKnownRole(String role) {
-        return CIVIL_REGISTRAR.equals(role) || IMMIGRATION_OFFICER.equals(role) || SUPPORTER.equals(role) || LAND_REGISTRAR.equals(role);
+        return CIVIL_REGISTRAR.equals(role) || IMMIGRATION_OFFICER.equals(role) || SUPPORTER.equals(role) || LAND_REGISTRAR.equals(role)
+                || LAND_SURVEYOR.equals(role)||LAND_CLERK.equals(role)||LAND_ADMINISTRATOR.equals(role);
     }
 
     public static String roleLabel(String role) {
@@ -80,6 +98,9 @@ public class AuthorityState extends PersistentState {
             case IMMIGRATION_OFFICER -> "Bedienstete Person der Einreisebehörde";
             case SUPPORTER -> "Supporter/Whitelister im Einreisedienst";
             case LAND_REGISTRAR -> "Bedienstete Person der Grundstücksverwaltung";
+            case LAND_SURVEYOR -> "Vermessungspersonal des Bauamts";
+            case LAND_CLERK -> "Sachbearbeitung des Bauamts";
+            case LAND_ADMINISTRATOR -> "Bauamtsleitung";
             default -> role;
         };
     }

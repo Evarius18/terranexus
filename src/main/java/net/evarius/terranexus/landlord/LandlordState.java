@@ -15,22 +15,29 @@ public class LandlordState extends PersistentState {
             Codec.unboundedMap(Codec.STRING,LandProperty.CODEC).optionalFieldOf("properties",Map.of()).forGetter(s->s.properties)
     ).apply(i,LandlordState::new));
     private static final PersistentStateType<LandlordState> TYPE=new PersistentStateType<>("terranexus_properties",LandlordState::new,CODEC,DataFixTypes.LEVEL);
-    private final Map<String,LandProperty> properties;
-    public LandlordState(){this(new HashMap<>());} private LandlordState(Map<String,LandProperty> p){properties=new HashMap<>(p);}
+    private final Map<String,LandProperty> properties;private final Map<String,Set<String>> chunkIndex=new HashMap<>();private final Set<String> broadProperties=new HashSet<>();
+    public LandlordState(){this(new HashMap<>());} private LandlordState(Map<String,LandProperty> p){properties=new HashMap<>(p);rebuildIndex();}
     public static LandlordState get(MinecraftServer s){return s.getOverworld().getPersistentStateManager().getOrCreate(TYPE);}
     public List<LandProperty> owned(UUID u){return properties.values().stream().filter(p->p.ownerType().equals("player")&&p.ownerId().equals(u.toString())).toList();}
     public List<LandProperty> all(){return properties.values().stream().sorted(Comparator.comparing(LandProperty::name)).toList();}
     public LandProperty get(String id){return properties.get(id);}
-    public LandProperty at(String dim,BlockPos p){return properties.values().stream().filter(x->x.contains(dim,p.getX(),p.getY(),p.getZ())).findFirst().orElse(null);}
+    public LandProperty at(String dim,BlockPos p){return candidates(dim,p.getX()>>4,p.getZ()>>4).stream().filter(x->x.contains(dim,p.getX(),p.getY(),p.getZ())).findFirst().orElse(null);}
+    public LandProperty inChunk(String dim,int chunkX,int chunkZ){int minX=chunkX*16,minZ=chunkZ*16,maxX=minX+15,maxZ=minZ+15;for(LandProperty property:candidates(dim,chunkX,chunkZ)){if(!property.dimension().equals(dim)||property.maxX()<minX||property.minX()>maxX||property.maxZ()<minZ||property.minZ()>maxZ)continue;if(!property.regionType().equals("polygon"))return property;for(int x=minX;x<=maxX;x++)for(int z=minZ;z<=maxZ;z++)if(property.containsColumn(dim,x,z))return property;}return null;}
     public boolean add(LandProperty p){
         if(overlapsOther(p,p.id())) return false;
-        properties.put(p.id(),p);markDirty();return true;
+        properties.put(p.id(),p);index(p);markDirty();return true;
     }
+    public LandProperty conflict(LandProperty property){for(LandProperty old:properties.values())if(!old.id().equals(property.id())&&old.dimension().equals(property.dimension())&&boxesOverlap(old,property))return old;return null;}
     public boolean update(LandProperty p){
         if(!properties.containsKey(p.id())||overlapsOther(p,p.id()))return false;
-        properties.put(p.id(),p);markDirty();return true;
+        unindex(p.id());properties.put(p.id(),p);index(p);markDirty();return true;
     }
-    public boolean remove(String id){if(properties.remove(id)!=null){markDirty();return true;}return false;}
+    public boolean remove(String id){if(properties.remove(id)!=null){unindex(id);markDirty();return true;}return false;}
+    private Collection<LandProperty> candidates(String dim,int cx,int cz){Set<String> ids=new HashSet<>(chunkIndex.getOrDefault(key(dim,cx,cz),Set.of()));ids.addAll(broadProperties);return ids.stream().map(properties::get).filter(Objects::nonNull).toList();}
+    private void rebuildIndex(){chunkIndex.clear();broadProperties.clear();properties.values().forEach(this::index);}
+    private void index(LandProperty p){int minCx=p.minX()>>4,maxCx=p.maxX()>>4,minCz=p.minZ()>>4,maxCz=p.maxZ()>>4;long chunks=(long)(maxCx-minCx+1)*(maxCz-minCz+1);if(chunks>4096){broadProperties.add(p.id());return;}for(int cx=minCx;cx<=maxCx;cx++)for(int cz=minCz;cz<=maxCz;cz++)chunkIndex.computeIfAbsent(key(p.dimension(),cx,cz),x->new HashSet<>()).add(p.id());}
+    private void unindex(String id){broadProperties.remove(id);chunkIndex.values().forEach(ids->ids.remove(id));}
+    private static String key(String dim,int cx,int cz){return dim+"|"+cx+"|"+cz;}
     private boolean overlapsOther(LandProperty p,String ignoredId){
         for(LandProperty old:properties.values()) if(!old.id().equals(ignoredId)&&old.dimension().equals(p.dimension())&&boxesOverlap(old,p))return true;
         return false;

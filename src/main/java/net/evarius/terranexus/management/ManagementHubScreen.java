@@ -42,8 +42,6 @@ public final class ManagementHubScreen {
         actions.put(22, ignored -> EconomyScreen.open(player));
         display(inventory, 24, Items.BRICKS, "Institutionen", "Firmen, Behörden, Vereine und Gruppen");
         actions.put(24, ignored -> InstitutionScreen.open(player));
-        display(inventory, 40, Items.FILLED_MAP, "Grundstücke", "Grundstücke, Wohnungen und Mietverträge");
-        actions.put(40, ignored -> PropertyScreen.open(player));
 
         player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
                 (syncId, playerInventory, ignored) -> new ActionMenuScreenHandler(syncId, playerInventory, inventory, actions),

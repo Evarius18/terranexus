@@ -1,6 +1,8 @@
 package net.evarius.terranexus.management;
 
 import net.evarius.terranexus.identity.AuthorityState;
+import net.evarius.terranexus.identity.IdentityState;
+import net.evarius.terranexus.identity.RoleplayNames;
 import net.evarius.terranexus.item.ModItems;
 import net.evarius.terranexus.block.ModBlocks;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -31,12 +33,21 @@ public final class AdminTestCommands {
     }
 
     private static int enable(ServerPlayerEntity player) {
+        IdentityState identities=IdentityState.get(player.getServer());
+        if(identities.get(player.getUuid())==null)identities.create(player.getUuid(),"Test",player.getName().getString(),"01.01.2000","Teststadt","Deutschland","Deutsch");
+        if(!identities.isApproved(player.getUuid()))identities.approve(player.getUuid(),player.getUuid());
+        RoleplayNames.apply(player);
         AuthorityState authority = AuthorityState.get(player.getServer());
         authority.grant(player.getUuid(), AuthorityState.CIVIL_REGISTRAR);
         authority.grant(player.getUuid(), AuthorityState.IMMIGRATION_OFFICER);
         authority.grant(player.getUuid(), AuthorityState.SUPPORTER);
         authority.grant(player.getUuid(), AuthorityState.LAND_REGISTRAR);
+        authority.grant(player.getUuid(), AuthorityState.LAND_SURVEYOR);
+        authority.grant(player.getUuid(), AuthorityState.LAND_CLERK);
+        authority.grant(player.getUuid(), AuthorityState.LAND_ADMINISTRATOR);
         player.giveItemStack(new ItemStack(ModItems.MANAGEMENT_TABLET));
+        player.giveItemStack(new ItemStack(ModItems.BUILDING_AUTHORITY_TABLET));
+        player.giveItemStack(new ItemStack(ModItems.LAND_REGISTRY_EXTRACT));
         player.giveItemStack(new ItemStack(ModBlocks.MANAGEMENT_COMPUTER));
         player.sendMessage(Text.literal("TerraNexus-Testzugriff aktiviert. Rechtsklicke das Verwaltungsgerät, um die GUI zu öffnen.")
                 .formatted(Formatting.GREEN), false);
@@ -49,6 +60,9 @@ public final class AdminTestCommands {
         authority.revoke(player.getUuid(), AuthorityState.IMMIGRATION_OFFICER);
         authority.revoke(player.getUuid(), AuthorityState.SUPPORTER);
         authority.revoke(player.getUuid(), AuthorityState.LAND_REGISTRAR);
+        authority.revoke(player.getUuid(), AuthorityState.LAND_SURVEYOR);
+        authority.revoke(player.getUuid(), AuthorityState.LAND_CLERK);
+        authority.revoke(player.getUuid(), AuthorityState.LAND_ADMINISTRATOR);
         player.sendMessage(Text.literal("TerraNexus-Testzugriff wurde entfernt.").formatted(Formatting.YELLOW), false);
         return 1;
     }

@@ -9,6 +9,8 @@ import net.evarius.terranexus.config.TerraNexusConfig;
 import net.evarius.terranexus.identity.AuthorityCommands;
 import net.evarius.terranexus.economy.EconomyCommands;
 import net.evarius.terranexus.landlord.LandlordProtection;
+import net.evarius.terranexus.landlord.LandlordScheduler;
+import net.evarius.terranexus.landlord.LandSurveyEvents;
 import net.evarius.terranexus.management.AdminTestCommands;
 import net.fabricmc.api.ModInitializer;
 
@@ -31,6 +33,8 @@ public class TerraNexus implements ModInitializer {
         AuthorityCommands.register();
         EconomyCommands.register();
         LandlordProtection.register();
+        LandlordScheduler.register();
+        LandSurveyEvents.register();
         AdminTestCommands.register();
 		LOGGER.info("Modifikation wurde initialisiert");
 	}

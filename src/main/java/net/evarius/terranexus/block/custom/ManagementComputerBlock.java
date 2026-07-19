@@ -2,8 +2,7 @@ package net.evarius.terranexus.block.custom;
 
 import com.mojang.serialization.MapCodec;
 import net.evarius.terranexus.identity.AuthorityState;
-import net.evarius.terranexus.management.ImmigrationScreen;
-import net.evarius.terranexus.management.ManagementHubScreen;
+import net.evarius.terranexus.management.AdminDesktopScreen;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.HorizontalFacingBlock;
@@ -40,8 +39,7 @@ public class ManagementComputerBlock extends HorizontalFacingBlock {
     }
     @Override protected ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity user, BlockHitResult hit) {
         if (!world.isClient() && user instanceof ServerPlayerEntity player) {
-            if (AuthorityState.mayManageIdentity(player)) ImmigrationScreen.open(player);
-            else ManagementHubScreen.open(player);
+            AdminDesktopScreen.open(player);
         }
         return ActionResult.SUCCESS;
     }

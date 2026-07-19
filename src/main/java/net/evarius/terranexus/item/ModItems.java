@@ -3,6 +3,9 @@ package net.evarius.terranexus.item;
 import net.evarius.terranexus.TerraNexus;
 import net.evarius.terranexus.item.custom.CitizenIdCardItem;
 import net.evarius.terranexus.item.custom.ManagementTabletItem;
+import net.evarius.terranexus.item.custom.BuildingAuthorityTabletItem;
+import net.evarius.terranexus.item.custom.LandSurveyToolItem;
+import net.evarius.terranexus.item.custom.LandRegistryExtractItem;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroups;
@@ -20,6 +23,12 @@ public class ModItems {
             new Item.Settings().maxCount(1), CitizenIdCardItem::new);
     public static final Item MANAGEMENT_TABLET = registerItem("management_tablet",
             new Item.Settings().maxCount(1), ManagementTabletItem::new);
+    public static final Item BUILDING_AUTHORITY_TABLET = registerItem("building_authority_tablet",
+            new Item.Settings().maxCount(1), BuildingAuthorityTabletItem::new);
+    public static final Item LAND_SURVEY_TOOL = registerItem("land_survey_tool",
+            new Item.Settings().maxCount(1), LandSurveyToolItem::new);
+    public static final Item LAND_REGISTRY_EXTRACT = registerItem("land_registry_extract",
+            new Item.Settings().maxCount(1), LandRegistryExtractItem::new);
 
     private static Item registerItem(String name) {
         return registerItem(name, new Item.Settings(), Item::new);
@@ -40,6 +49,9 @@ public class ModItems {
             entries.add(PINK_GARNET);
             entries.add(RAW_PINK_GARNET);
             entries.add(MANAGEMENT_TABLET);
+            entries.add(BUILDING_AUTHORITY_TABLET);
+            entries.add(LAND_SURVEY_TOOL);
+            entries.add(LAND_REGISTRY_EXTRACT);
         });
     }
 }

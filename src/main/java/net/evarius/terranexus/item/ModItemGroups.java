@@ -55,6 +55,9 @@ public class ModItemGroups {
                         entries.add(ModItems.PINK_GARNET);
                         entries.add(ModItems.RAW_PINK_GARNET);
                         entries.add(ModItems.MANAGEMENT_TABLET);
+                        entries.add(ModItems.BUILDING_AUTHORITY_TABLET);
+                        entries.add(ModItems.LAND_SURVEY_TOOL);
+                        entries.add(ModItems.LAND_REGISTRY_EXTRACT);
                     }).build());
 
     public static final ItemGroup PINK_GARNET_BLOCKS_GROUP = Registry.register(Registries.ITEM_GROUP,

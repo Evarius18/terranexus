@@ -32,6 +32,7 @@ public class EconomyState extends PersistentState {
     public long balance(String account) { return balances.getOrDefault(account, 0L); }
     public static String playerAccount(UUID owner) { return owner.toString(); }
     public static String institutionAccount(String id) { return "institution:" + id; }
+    public static String areaAccount(String id) { return "area:" + id; }
 
     public void deposit(UUID owner, long cents) {
         if (cents < 0) throw new IllegalArgumentException("Negative deposit");

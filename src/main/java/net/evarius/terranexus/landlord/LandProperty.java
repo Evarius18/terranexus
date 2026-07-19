@@ -33,6 +33,8 @@ public record LandProperty(String id, String name, String ownerType, String owne
         return inside;
     }
 
+    public boolean containsColumn(String world,int x,int z){return contains(world,x,minY,z);}
+
     public boolean isOwnedBy(UUID player) {
         return ownerType.equals("player") && ownerId.equals(player.toString());
     }

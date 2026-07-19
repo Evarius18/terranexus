@@ -71,5 +71,8 @@
   "item.terranexus.citizen_id_card": "TerraNexus Citizen ID",
   "item.terranexus.management_tablet": "Citizen Management Device",
   "block.terranexus.management_computer": "Administration Computer",
-  "item.terranexus.management_computer": "Administration Computer"
+  "item.terranexus.management_computer": "Administration Computer",
+  "item.terranexus.building_authority_tablet": "Building Authority Tablet",
+  "item.terranexus.land_survey_tool": "Land Survey Device",
+  "item.terranexus.land_registry_extract": "Land Registry Extract"
 }

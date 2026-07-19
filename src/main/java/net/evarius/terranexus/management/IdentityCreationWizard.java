@@ -8,6 +8,7 @@ import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.item.Items;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,9 +42,13 @@ public final class IdentityCreationWizard {
             officer.sendMessage(Text.literal("Deine Verwaltungsberechtigung ist nicht mehr gültig.").formatted(Formatting.RED), false);
             return;
         }
+        if(step==6){openGenderSelection(officer,citizen,values);return;}
         String label = LABELS.get(step);
         officer.openHandledScreen(new SimpleNamedScreenHandlerFactory(
                 (syncId, inventory, ignored) -> new TextInputScreenHandler(syncId, inventory, value -> {
+                    if(!AuthorityState.mayManageIdentity(officer)){officer.sendMessage(Text.literal("Deine Verwaltungsberechtigung ist nicht mehr gültig.").formatted(Formatting.RED),false);return;}
+                    value=value==null?"":value.trim();
+                    if(value.isBlank()||value.length()>80){officer.sendMessage(Text.literal(value.isBlank()?"Das Feld darf nicht leer sein.":"Der Wert ist zu lang (maximal 80 Zeichen).").formatted(Formatting.RED),false);openStep(officer,citizen,values,step);return;}
                     if (step == 2 && !isValidBirthDate(value)) {
                         officer.sendMessage(Text.literal("Ungültiges Geburtsdatum. Bitte im Format TT.MM.JJJJ eingeben, z. B. 23.05.1990.")
                                 .formatted(Formatting.RED), false);
@@ -55,6 +60,7 @@ public final class IdentityCreationWizard {
                         openStep(officer, citizen, values, step + 1);
                     } else {
                         IdentityState state = IdentityState.get(officer.getServer());
+                        if(state.get(citizen.getUuid())!=null){officer.sendMessage(Text.literal("Für diese Person existiert inzwischen bereits eine Bürgerakte.").formatted(Formatting.RED),false);ImmigrationScreen.open(officer);return;}
                         CitizenIdentity identity = state.create(citizen.getUuid(), values.get(0), values.get(1),
                                 values.get(2), values.get(3), values.get(4), values.get(5));
                         state.put(identity.withField("geschlecht", values.get(6)).withField("adresse", values.get(7)));
@@ -65,6 +71,8 @@ public final class IdentityCreationWizard {
                     }
                 }), Text.literal("Bürgerakte: " + label).formatted(Formatting.DARK_AQUA)));
     }
+
+    private static void openGenderSelection(ServerPlayerEntity officer,ServerPlayerEntity citizen,List<String> values){List<SelectionMenuScreen.Option> options=List.of(new SelectionMenuScreen.Option("Weiblich","Weiblich","Amtliche Auswahl",Items.MAGENTA_DYE),new SelectionMenuScreen.Option("Männlich","Männlich","Amtliche Auswahl",Items.BLUE_DYE),new SelectionMenuScreen.Option("Divers","Divers","Amtliche Auswahl",Items.PURPLE_DYE),new SelectionMenuScreen.Option("Keine Angabe","Keine Angabe","Ohne Geschlechtseintrag",Items.GRAY_DYE));SelectionMenuScreen.open(officer,"Geschlecht auswählen",options,value->{if(!AuthorityState.mayManageIdentity(officer)){officer.sendMessage(Text.literal("Deine Verwaltungsberechtigung ist nicht mehr gültig.").formatted(Formatting.RED),false);return;}values.add(value);openStep(officer,citizen,values,7);},()->{List<String> previous=new ArrayList<>(values);if(!previous.isEmpty())previous.remove(previous.size()-1);openStep(officer,citizen,previous,5);});}
 
     private static boolean isValidBirthDate(String value) {
         try {

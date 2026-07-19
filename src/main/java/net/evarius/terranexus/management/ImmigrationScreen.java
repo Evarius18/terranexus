@@ -33,6 +33,7 @@ public final class ImmigrationScreen {
         Map<Integer, java.util.function.Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
         IdentityState identities = IdentityState.get(officer.getServer());
         display(inventory, 4, Items.WRITABLE_BOOK, "Einreiseverwaltung", "Bürger prüfen, freigeben und Ausweise ausstellen");
+        display(inventory,8,Items.ARROW,"Zurück","Zum Admin-Desktop");actions.put(8,ignored->AdminDesktopScreen.open(officer));
 
         int row = 0;
         for (ServerPlayerEntity target : officer.getServer().getPlayerManager().getPlayerList()) {

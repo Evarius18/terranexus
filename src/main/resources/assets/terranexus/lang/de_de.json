@@ -71,5 +71,8 @@
   "item.terranexus.citizen_id_card": "TerraNexus-Personalausweis",
   "item.terranexus.management_tablet": "Bürger- und Verwaltungsgerät",
   "block.terranexus.management_computer": "Verwaltungs-PC",
-  "item.terranexus.management_computer": "Verwaltungs-PC"
+  "item.terranexus.management_computer": "Verwaltungs-PC",
+  "item.terranexus.building_authority_tablet": "Bauamt-Tablet",
+  "item.terranexus.land_survey_tool": "Landvermessungsgerät",
+  "item.terranexus.land_registry_extract": "Grundbuchauszug"
 }
