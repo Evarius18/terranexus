@@ -3,7 +3,13 @@
 	"package": "net.evarius.terranexus.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-		"ExampleMixin"
+		"DispenserProtectionMixin",
+		"DropperProtectionMixin",
+		"ExplosionProtectionMixin",
+		"FarmlandProtectionMixin",
+		"FireProtectionMixin",
+		"FluidProtectionMixin",
+		"PistonProtectionMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

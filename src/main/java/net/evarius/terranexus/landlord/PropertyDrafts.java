@@ -16,6 +16,7 @@ public final class PropertyDrafts {
 
     public static EditDraft edit(UUID player) { return EDITS.get(player); }
     public static void cancelEdit(UUID player) { EDITS.remove(player); }
+    public static void retainOnline(java.util.Set<UUID> online) { POS1.keySet().retainAll(online); EDITS.keySet().retainAll(online); }
 
     public static EditDraft begin(UUID player, LandProperty property) {
         List<BlockPos> points = new ArrayList<>();

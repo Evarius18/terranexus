@@ -5,7 +5,7 @@ import net.evarius.terranexus.item.ModItemGroups;
 import net.evarius.terranexus.item.ModItems;
 import net.evarius.terranexus.identity.IdentityCommands;
 import net.evarius.terranexus.identity.RoleplayNames;
-import net.evarius.terranexus.config.TerraNexusConfig;
+import net.evarius.terranexus.config.ConfigManager;
 import net.evarius.terranexus.identity.AuthorityCommands;
 import net.evarius.terranexus.economy.EconomyCommands;
 import net.evarius.terranexus.landlord.LandlordProtection;
@@ -23,7 +23,7 @@ public class TerraNexus implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-        TerraNexusConfig.load();
+        ConfigManager.load();
         ModItemGroups.registerItemGroups();
 
         ModItems.registerModItems();

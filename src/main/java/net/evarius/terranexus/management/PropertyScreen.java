@@ -1,6 +1,7 @@
 package net.evarius.terranexus.management;
 
 import net.evarius.terranexus.identity.AuthorityState;
+import net.evarius.terranexus.config.ConfigManager;
 import net.evarius.terranexus.identity.CitizenIdentity;
 import net.evarius.terranexus.identity.IdentityState;
 import net.evarius.terranexus.institution.Institution;
@@ -16,9 +17,9 @@ import net.evarius.terranexus.landlord.LandSelectionState;
 import net.evarius.terranexus.item.ModItems;
 import net.evarius.terranexus.landlord.LandlordState;
 import net.evarius.terranexus.landlord.PropertyDrafts;
+import net.evarius.terranexus.landlord.LandVisuals;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Items;
-import net.minecraft.particle.ParticleTypes;
 import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
@@ -166,12 +167,7 @@ public final class PropertyScreen {
     private static void startSurvey(ServerPlayerEntity player,String dimension){net.minecraft.item.ItemStack tool=new net.minecraft.item.ItemStack(ModItems.LAND_SURVEY_TOOL);if(!player.getInventory().contains(tool)){error(player,"Kein Landvermessungsgerät im Inventar. Hole die Hardware vor dem Einsatz aus dem Lager.");open(player);return;}LandSelectionState selections=LandSelectionState.get(player.getServer());LandSelection current=selections.get(player.getUuid());if(current==null||!current.dimension().equals(dimension))selections.start(player.getUuid(),dimension);player.closeHandledScreen();player.sendMessage(Text.literal("Vermessung aktiv: Rechtsklick setzt einen Eckpunkt, Linksklick entfernt den letzten. Öffne zum Abschluss wieder das Bauamt-Tablet.").formatted(Formatting.GREEN),false);}
 
     private static void preview(ServerPlayerEntity player, List<BlockPos> points) {
-        if (points == null || points.isEmpty()) return;
-        int edges = points.size() > 2 ? points.size() : points.size() - 1;
-        for (int i = 0; i < edges; i++) {
-            BlockPos a = points.get(i), b = points.get((i + 1) % points.size()); double dx = b.getX() - a.getX(), dz = b.getZ() - a.getZ(); int samples = Math.max(1, (int)Math.ceil(Math.hypot(dx, dz) * 2));
-            for (int sample = 0; sample <= samples; sample++) { double ratio = sample / (double)samples; player.getWorld().spawnParticles(player, ParticleTypes.HAPPY_VILLAGER, true, false, a.getX() + .5 + dx * ratio, player.getY() + .3, a.getZ() + .5 + dz * ratio, 1, 0, 0, 0, 0); }
-        }
+        LandVisuals.preview(player, points);
     }
 
     private static void openOwnerSelection(ServerPlayerEntity player, LandProperty property) {
@@ -205,7 +201,7 @@ public final class PropertyScreen {
         try { CitizenIdentity identity = IdentityState.get(player.getServer()).get(UUID.fromString(property.ownerId())); return identity == null ? "Bürgerkonto" : identity.firstName() + " " + identity.lastName(); } catch (IllegalArgumentException ignored) { return "Unbekannt"; }
     }
 
-    private static void askName(ServerPlayerEntity player, Consumer<String> done) { player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, inventory, ignored) -> new TextInputScreenHandler(id, inventory, value -> { if (!value.isBlank()) done.accept(value.trim()); else open(player); }), Text.literal("Grundstücksname"))); }
+    private static void askName(ServerPlayerEntity player, Consumer<String> done) { player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, inventory, ignored) -> new TextInputScreenHandler(id, inventory, value -> { String name=value==null?"":value.trim();if(name.isBlank()){open(player);return;}if(name.length()>ConfigManager.claims().maximumPropertyNameLength){error(player,"Der Grundstücksname darf maximal "+ConfigManager.claims().maximumPropertyNameLength+" Zeichen lang sein.");open(player);return;}done.accept(name); }), Text.literal("Grundstücksname"))); }
     private static void askAddress(ServerPlayerEntity player,LandProperty property){player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id,inventory,ignored)->new TextInputScreenHandler(id,inventory,value->{LandManagementState.get(player.getServer()).setAddress(property.id(),value.trim());LandAuditState.get(player.getServer()).log(player.getUuid(),"ADDRESS_UPDATE",property,value.trim());openEditor(player);}),Text.literal("Grundstücksadresse")));}
     private static void error(ServerPlayerEntity player, String message) { player.sendMessage(Text.literal(message).formatted(Formatting.RED), false); }
     private static void button(SimpleInventory inventory, Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions, int slot, net.minecraft.item.Item item, String name, String detail, Consumer<net.minecraft.entity.player.PlayerEntity> action) { ManagementHubScreen.display(inventory, slot, item, name, detail); actions.put(slot, action); }

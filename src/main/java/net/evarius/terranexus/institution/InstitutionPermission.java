@@ -1,0 +1,18 @@
+package net.evarius.terranexus.institution;
+
+public enum InstitutionPermission {
+    VIEW_MEMBERS,
+    MANAGE_EMPLOYEES,
+    MANAGE_ROLES,
+    VIEW_FINANCES,
+    MANAGE_FINANCES,
+    VIEW_AUDIT,
+    MANAGE_SALARIES,
+    MANAGE_SETTINGS,
+    MANAGE_TASKS,
+    MANAGE_INVOICES,
+    TRANSFER_OWNERSHIP,
+    BANK_VIEW_ACCOUNTS,
+    BANK_CASH_OPERATIONS,
+    BANK_FREEZE_ACCOUNTS
+}

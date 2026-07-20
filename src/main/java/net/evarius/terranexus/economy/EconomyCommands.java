@@ -21,7 +21,8 @@ public final class EconomyCommands {
                                 .then(argument("cents", LongArgumentType.longArg(1)).executes(context -> {
                                     ServerPlayerEntity player = EntityArgumentType.getPlayer(context, "player");
                                     long cents = LongArgumentType.getLong(context, "cents");
-                                    EconomyState.get(context.getSource().getServer()).deposit(player.getUuid(), cents);
+                                    EconomyState.get(context.getSource().getServer()).adjust(EconomyState.playerAccount(player.getUuid()), cents,
+                                            "TNAdmin-Einzahlung", context.getSource().getEntity() == null ? "CONSOLE" : context.getSource().getEntity().getUuidAsString(), "", "ADMIN_DEPOSIT");
                                     CitizenIdentity identity = IdentityState.get(context.getSource().getServer()).get(player.getUuid());
                                     String name = identity == null ? "Unregistrierter Bürger" : identity.firstName() + " " + identity.lastName();
                                     context.getSource().sendFeedback(() -> Text.literal(EconomyState.format(cents) + " wurden dem Konto von " + name + " gutgeschrieben."), true);

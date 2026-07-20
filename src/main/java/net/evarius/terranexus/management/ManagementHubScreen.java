@@ -1,6 +1,7 @@
 package net.evarius.terranexus.management;
 
 import net.evarius.terranexus.economy.EconomyState;
+import net.evarius.terranexus.config.ConfigManager;
 import net.evarius.terranexus.identity.AuthorityState;
 import net.evarius.terranexus.identity.CitizenIdentity;
 import net.evarius.terranexus.identity.IdentityScreen;
@@ -45,7 +46,7 @@ public final class ManagementHubScreen {
 
         player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
                 (syncId, playerInventory, ignored) -> new ActionMenuScreenHandler(syncId, playerInventory, inventory, actions),
-                Text.literal("TerraNexus Verwaltung").formatted(Formatting.DARK_AQUA)));
+                Text.literal(ConfigManager.general().serverDisplayName + " Verwaltung").formatted(Formatting.DARK_AQUA)));
     }
 
     private static boolean mayManage(ServerPlayerEntity player) {

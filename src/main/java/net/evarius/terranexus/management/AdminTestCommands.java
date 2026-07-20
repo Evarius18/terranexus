@@ -1,6 +1,8 @@
 package net.evarius.terranexus.management;
 
 import net.evarius.terranexus.identity.AuthorityState;
+import net.evarius.terranexus.config.ConfigManager;
+import net.evarius.terranexus.landlord.LandlordState;
 import net.evarius.terranexus.identity.IdentityState;
 import net.evarius.terranexus.identity.RoleplayNames;
 import net.evarius.terranexus.item.ModItems;
@@ -29,12 +31,20 @@ public final class AdminTestCommands {
                                 .executes(context -> disable(context.getSource().getPlayerOrThrow()))
                                 .then(argument("player", EntityArgumentType.player())
                                         .executes(context -> disable(EntityArgumentType.getPlayer(context, "player")))))
+                        .then(literal("reload-config").executes(context -> {
+                            ConfigManager.reload();
+                            LandlordState.get(context.getSource().getServer()).refreshRuntimeIndexes();
+                            context.getSource().sendFeedback(() -> Text.literal("TerraNexus-Konfiguration neu geladen: " + ConfigManager.directory()), true);
+                            return 1;
+                        }))
         ));
     }
 
     private static int enable(ServerPlayerEntity player) {
         IdentityState identities=IdentityState.get(player.getServer());
         if(identities.get(player.getUuid())==null)identities.create(player.getUuid(),"Test",player.getName().getString(),"01.01.2000","Teststadt","Deutschland","Deutsch");
+        net.evarius.terranexus.economy.EconomyState.get(player.getServer())
+                .ensureAccount(net.evarius.terranexus.economy.EconomyState.playerAccount(player.getUuid()));
         if(!identities.isApproved(player.getUuid()))identities.approve(player.getUuid(),player.getUuid());
         RoleplayNames.apply(player);
         AuthorityState authority = AuthorityState.get(player.getServer());
@@ -45,6 +55,7 @@ public final class AdminTestCommands {
         authority.grant(player.getUuid(), AuthorityState.LAND_SURVEYOR);
         authority.grant(player.getUuid(), AuthorityState.LAND_CLERK);
         authority.grant(player.getUuid(), AuthorityState.LAND_ADMINISTRATOR);
+        authority.grant(player.getUuid(), AuthorityState.TN_ADMIN_TEST);
         player.giveItemStack(new ItemStack(ModItems.MANAGEMENT_TABLET));
         player.giveItemStack(new ItemStack(ModItems.BUILDING_AUTHORITY_TABLET));
         player.giveItemStack(new ItemStack(ModItems.LAND_REGISTRY_EXTRACT));
@@ -63,6 +74,7 @@ public final class AdminTestCommands {
         authority.revoke(player.getUuid(), AuthorityState.LAND_SURVEYOR);
         authority.revoke(player.getUuid(), AuthorityState.LAND_CLERK);
         authority.revoke(player.getUuid(), AuthorityState.LAND_ADMINISTRATOR);
+        authority.revoke(player.getUuid(), AuthorityState.TN_ADMIN_TEST);
         player.sendMessage(Text.literal("TerraNexus-Testzugriff wurde entfernt.").formatted(Formatting.YELLOW), false);
         return 1;
     }

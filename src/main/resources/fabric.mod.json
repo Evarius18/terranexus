@@ -17,13 +17,7 @@
 	"entrypoints": {
 		"main": [
 			"net.evarius.terranexus.TerraNexus"
-		],
-		"fabric-datagen": [
-			"net.evarius.terranexus.TerraNexusDataGenerator"
-		],
-      "client": [
-        "net.evarius.terranexus.TerraNexusClient"
-      ]
+		]
 	},
 	"mixins": [
 		"terranexus.mixins.json"

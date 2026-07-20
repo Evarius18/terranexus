@@ -59,5 +59,6 @@ Authorized staff receive the immigration workstation; citizens receive their per
 
 ## Currency configuration
 
-`config/terranexus.json` is created on first server start. `currencyName` and `currencySymbol` can be
+The structured files below `config/TerraNexus/` are created on first server start. Currency and immigration
+number settings can be
 changed there; their defaults are `TerraNexus Euro` and `TN€`.

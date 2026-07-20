@@ -58,7 +58,7 @@ periodische Mietabbuchungen. Nach drei offenen Terminen endet der Vertrag. Bei r
 verfügbare Kaution zurückgebucht.
 
 Ein Miettag entspricht standardmäßig 1.440 Minuten. Für Tests kann `rentDayDurationMinutes` in
-`config/terranexus.json` vor dem Serverstart auf `1` gesetzt werden.
+`config/TerraNexus/claims.json` auf `1` gesetzt und anschließend neu geladen werden.
 
 Die Rechteverwaltung trennt Bauen, allgemeine Interaktion, Container und Redstone. Eigentümer können diese
 Rechte öffentlich oder einzeln für registrierte Bürger freigeben. Aktive Mieter erhalten Grundstückszugriff.

@@ -4,6 +4,7 @@ import net.evarius.terranexus.identity.CitizenIdentity;
 import net.evarius.terranexus.identity.IdentityState;
 import net.evarius.terranexus.identity.AuthorityState;
 import net.evarius.terranexus.identity.RoleplayNames;
+import net.evarius.terranexus.config.ConfigManager;
 import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
@@ -48,7 +49,8 @@ public final class IdentityCreationWizard {
                 (syncId, inventory, ignored) -> new TextInputScreenHandler(syncId, inventory, value -> {
                     if(!AuthorityState.mayManageIdentity(officer)){officer.sendMessage(Text.literal("Deine Verwaltungsberechtigung ist nicht mehr gültig.").formatted(Formatting.RED),false);return;}
                     value=value==null?"":value.trim();
-                    if(value.isBlank()||value.length()>80){officer.sendMessage(Text.literal(value.isBlank()?"Das Feld darf nicht leer sein.":"Der Wert ist zu lang (maximal 80 Zeichen).").formatted(Formatting.RED),false);openStep(officer,citizen,values,step);return;}
+                    int maximumLength=ConfigManager.immigration().maximumFieldLength;
+                    if(value.isBlank()||value.length()>maximumLength){officer.sendMessage(Text.literal(value.isBlank()?"Das Feld darf nicht leer sein.":"Der Wert ist zu lang (maximal "+maximumLength+" Zeichen).").formatted(Formatting.RED),false);openStep(officer,citizen,values,step);return;}
                     if (step == 2 && !isValidBirthDate(value)) {
                         officer.sendMessage(Text.literal("Ungültiges Geburtsdatum. Bitte im Format TT.MM.JJJJ eingeben, z. B. 23.05.1990.")
                                 .formatted(Formatting.RED), false);
@@ -63,6 +65,8 @@ public final class IdentityCreationWizard {
                         if(state.get(citizen.getUuid())!=null){officer.sendMessage(Text.literal("Für diese Person existiert inzwischen bereits eine Bürgerakte.").formatted(Formatting.RED),false);ImmigrationScreen.open(officer);return;}
                         CitizenIdentity identity = state.create(citizen.getUuid(), values.get(0), values.get(1),
                                 values.get(2), values.get(3), values.get(4), values.get(5));
+                        net.evarius.terranexus.economy.EconomyState.get(officer.getServer())
+                                .ensureAccount(net.evarius.terranexus.economy.EconomyState.playerAccount(citizen.getUuid()));
                         state.put(identity.withField("geschlecht", values.get(6)).withField("adresse", values.get(7)));
                         RoleplayNames.apply(citizen);
                         officer.sendMessage(Text.literal("Bürgerakte " + identity.citizenNumber()
@@ -72,7 +76,7 @@ public final class IdentityCreationWizard {
                 }), Text.literal("Bürgerakte: " + label).formatted(Formatting.DARK_AQUA)));
     }
 
-    private static void openGenderSelection(ServerPlayerEntity officer,ServerPlayerEntity citizen,List<String> values){List<SelectionMenuScreen.Option> options=List.of(new SelectionMenuScreen.Option("Weiblich","Weiblich","Amtliche Auswahl",Items.MAGENTA_DYE),new SelectionMenuScreen.Option("Männlich","Männlich","Amtliche Auswahl",Items.BLUE_DYE),new SelectionMenuScreen.Option("Divers","Divers","Amtliche Auswahl",Items.PURPLE_DYE),new SelectionMenuScreen.Option("Keine Angabe","Keine Angabe","Ohne Geschlechtseintrag",Items.GRAY_DYE));SelectionMenuScreen.open(officer,"Geschlecht auswählen",options,value->{if(!AuthorityState.mayManageIdentity(officer)){officer.sendMessage(Text.literal("Deine Verwaltungsberechtigung ist nicht mehr gültig.").formatted(Formatting.RED),false);return;}values.add(value);openStep(officer,citizen,values,7);},()->{List<String> previous=new ArrayList<>(values);if(!previous.isEmpty())previous.remove(previous.size()-1);openStep(officer,citizen,previous,5);});}
+    private static void openGenderSelection(ServerPlayerEntity officer,ServerPlayerEntity citizen,List<String> values){List<SelectionMenuScreen.Option> options=ConfigManager.immigration().genderOptions.stream().map(value->new SelectionMenuScreen.Option(value,value,"Amtliche Auswahl",Items.NAME_TAG)).toList();SelectionMenuScreen.open(officer,"Geschlecht auswählen",options,value->{if(!AuthorityState.mayManageIdentity(officer)){officer.sendMessage(Text.literal("Deine Verwaltungsberechtigung ist nicht mehr gültig.").formatted(Formatting.RED),false);return;}values.add(value);openStep(officer,citizen,values,7);},()->{List<String> previous=new ArrayList<>(values);if(!previous.isEmpty())previous.remove(previous.size()-1);openStep(officer,citizen,previous,5);});}
 
     private static boolean isValidBirthDate(String value) {
         try {

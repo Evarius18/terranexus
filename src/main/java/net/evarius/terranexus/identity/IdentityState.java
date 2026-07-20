@@ -6,12 +6,15 @@ import net.minecraft.datafixer.DataFixTypes;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.PersistentState;
 import net.minecraft.world.PersistentStateType;
+import net.evarius.terranexus.config.ConfigManager;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.security.SecureRandom;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 public class IdentityState extends PersistentState {
     private static final Codec<Map<String, CitizenIdentity>> IDENTITIES_CODEC = Codec.unboundedMap(Codec.STRING, CitizenIdentity.CODEC);
@@ -29,6 +32,9 @@ public class IdentityState extends PersistentState {
 
     private final Map<String, CitizenIdentity> identities;
     private final Map<String, ApprovalRecord> approvals;
+    private final Set<String> citizenNumbers = new HashSet<>();
+    private List<CitizenIdentity> cachedAll;
+    private List<CitizenIdentity> cachedApproved;
     private static final SecureRandom RANDOM = new SecureRandom();
 
     public IdentityState() {
@@ -38,6 +44,7 @@ public class IdentityState extends PersistentState {
     private IdentityState(Map<String, CitizenIdentity> identities, Map<String, ApprovalRecord> approvals) {
         this.identities = new HashMap<>(identities);
         this.approvals = new HashMap<>(approvals);
+        this.identities.values().forEach(identity -> citizenNumbers.add(identity.citizenNumber()));
     }
 
     public static IdentityState get(MinecraftServer server) {
@@ -49,8 +56,18 @@ public class IdentityState extends PersistentState {
     }
 
     public List<CitizenIdentity> allApproved() {
-        return identities.values().stream().filter(identity -> approvals.containsKey(identity.playerUuid()))
+        if (cachedApproved == null) cachedApproved = identities.values().stream()
+                .filter(identity -> approvals.containsKey(identity.playerUuid()))
                 .sorted(java.util.Comparator.comparing(CitizenIdentity::lastName).thenComparing(CitizenIdentity::firstName)).toList();
+        return cachedApproved;
+    }
+
+    public List<CitizenIdentity> all() {
+        if (cachedAll == null) cachedAll = identities.values().stream()
+                .sorted(java.util.Comparator.comparing(CitizenIdentity::lastName)
+                        .thenComparing(CitizenIdentity::firstName)
+                        .thenComparing(CitizenIdentity::citizenNumber)).toList();
+        return cachedAll;
     }
 
     public CitizenIdentity create(UUID playerUuid, String firstName, String lastName, String birthDate,
@@ -59,26 +76,33 @@ public class IdentityState extends PersistentState {
                 createRandomCitizenNumber(), firstName, lastName, birthDate,
                 birthPlace, birthCountry, nationality, "Nicht angegeben", "Nicht gemeldet");
         identities.put(playerUuid.toString(), identity);
+        citizenNumbers.add(identity.citizenNumber());
+        invalidateCaches();
         markDirty();
         return identity;
     }
 
     private String createRandomCitizenNumber() {
         while (true) {
-            String number = "TN-" + String.format("%08d", RANDOM.nextInt(100_000_000));
-            boolean exists = identities.values().stream()
-                    .anyMatch(identity -> identity.citizenNumber().equals(number));
-            if (!exists) return number;
+            var config = ConfigManager.immigration();
+            long bound = 1;
+            for (int index = 0; index < config.citizenNumberDigits; index++) bound *= 10;
+            String number = config.citizenNumberPrefix + String.format("%0" + config.citizenNumberDigits + "d", RANDOM.nextLong(bound));
+            if (!citizenNumbers.contains(number)) return number;
         }
     }
 
     public void put(CitizenIdentity identity) {
-        identities.put(identity.playerUuid(), identity);
+        CitizenIdentity old = identities.put(identity.playerUuid(), identity);
+        if (old != null) citizenNumbers.remove(old.citizenNumber());
+        citizenNumbers.add(identity.citizenNumber());
+        invalidateCaches();
         markDirty();
     }
 
     public void approve(UUID citizen, UUID officer) {
         approvals.put(citizen.toString(), new ApprovalRecord(officer.toString(), System.currentTimeMillis()));
+        cachedApproved = null;
         markDirty();
     }
 
@@ -91,8 +115,10 @@ public class IdentityState extends PersistentState {
     }
 
     public void revokeApproval(UUID citizen) {
-        if (approvals.remove(citizen.toString()) != null) markDirty();
+        if (approvals.remove(citizen.toString()) != null) { cachedApproved = null; markDirty(); }
     }
+
+    private void invalidateCaches() { cachedAll = null; cachedApproved = null; }
 
     public record ApprovalRecord(String approvedBy, long approvedAt) {}
 }
