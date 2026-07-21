@@ -18,7 +18,7 @@ public abstract class FarmlandProtectionMixin {
     @Redirect(method = "onLandedUpon", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/block/FarmlandBlock;setToDirt(Lnet/minecraft/entity/Entity;Lnet/minecraft/block/BlockState;Lnet/minecraft/world/World;Lnet/minecraft/util/math/BlockPos;)V"))
     private void terranexus$preventUnauthorizedTrampling(Entity entity, BlockState state, World world, BlockPos pos) {
-        if (!ConfigManager.claims().protectFarmland || LandlordProtection.propertyAt(world, pos) == null
+        if (!ConfigManager.claims().protectFarmland || !LandlordProtection.environmentProtected(world, pos)
                 || entity instanceof ServerPlayerEntity player && LandlordProtection.isAllowed(player, pos, LandAccess.BUILD)) {
             FarmlandBlock.setToDirt(entity, state, world, pos);
         }

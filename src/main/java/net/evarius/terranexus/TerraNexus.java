@@ -12,6 +12,7 @@ import net.evarius.terranexus.landlord.LandlordProtection;
 import net.evarius.terranexus.landlord.LandlordScheduler;
 import net.evarius.terranexus.landlord.LandSurveyEvents;
 import net.evarius.terranexus.management.AdminTestCommands;
+import net.evarius.terranexus.shop.ShopService;
 import net.fabricmc.api.ModInitializer;
 
 import org.slf4j.Logger;
@@ -33,6 +34,7 @@ public class TerraNexus implements ModInitializer {
         AuthorityCommands.register();
         EconomyCommands.register();
         LandlordProtection.register();
+        ShopService.register();
         LandlordScheduler.register();
         LandSurveyEvents.register();
         AdminTestCommands.register();

@@ -18,6 +18,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Set;
+import java.util.function.BooleanSupplier;
 
 public class EconomyState extends PersistentState {
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -35,6 +37,8 @@ public class EconomyState extends PersistentState {
     private final List<EconomyTransaction> transactions;
     private final Map<String, List<EconomyTransaction>> accountTransactions = new HashMap<>();
     private final Map<String, List<EconomyTransaction>> institutionTransactions = new HashMap<>();
+    private final Map<String, List<EconomyTransaction>> typeTransactions = new HashMap<>();
+    private EconomyMetrics metricsCache;
 
     public EconomyState() { this(new HashMap<>(), new HashMap<>(), new ArrayList<>()); }
     private EconomyState(Map<String, Long> balances, Map<String, BankAccount> accounts,
@@ -66,6 +70,7 @@ public class EconomyState extends PersistentState {
         accountNumberIndex.put(normalizeAccountNumber(created.accountNumber()), account);
         long initialBalance = newBalance && isPlayerAccount(account) ? ConfigManager.economy().playerStartBalance : 0L;
         balances.putIfAbsent(account, initialBalance);
+        metricsCache = null;
         markDirty();
         if (initialBalance > 0) record("SYSTEM", account, initialBalance, "Konfiguriertes Startguthaben", "SYSTEM", "",
                 "START_BALANCE", true, 0, initialBalance);
@@ -88,7 +93,8 @@ public class EconomyState extends PersistentState {
     public void setFrozen(String account, boolean frozen, String actorUuid) {
         setFrozen(account, frozen, actorUuid, institutionFrom(account));
     }
-    public void setFrozen(String account, boolean frozen, String actorUuid, String auditInstitutionId) {
+    public synchronized void setFrozen(String account, boolean frozen, String actorUuid, String auditInstitutionId) {
+        if (account.startsWith("system:")) return;
         accounts.put(account, ensureAccount(account).withFrozen(frozen));
         record(account, account, 0, frozen ? "Konto gesperrt" : "Konto entsperrt", actorUuid,
                 auditInstitutionId, frozen ? "ACCOUNT_FROZEN" : "ACCOUNT_UNFROZEN", true,
@@ -115,6 +121,12 @@ public class EconomyState extends PersistentState {
 
     public boolean transfer(String from, String to, long cents, String purpose, String actorUuid,
                             String institutionId, String type) {
+        return transferConditional(from, to, cents, purpose, actorUuid, institutionId, type, () -> true);
+    }
+
+    public synchronized boolean transferConditional(String from, String to, long cents, String purpose,
+                                                    String actorUuid, String institutionId, String type,
+                                                    BooleanSupplier commit) {
         ensureAccount(from);
         ensureAccount(to);
         long source = balance(from), target = balance(to);
@@ -138,6 +150,13 @@ public class EconomyState extends PersistentState {
             catch (ArithmeticException overflow) { valid = false; }
         }
         if (valid) {
+            try { valid = commit.getAsBoolean(); }
+            catch (RuntimeException failure) {
+                TerraNexus.LOGGER.error("Fachlicher Commit für Buchung {} ist fehlgeschlagen", type, failure);
+                valid = false;
+            }
+        }
+        if (valid) {
             balances.put(from, source - debit);
             balances.put(to, updatedTarget);
             if (fee > 0) {
@@ -145,6 +164,7 @@ public class EconomyState extends PersistentState {
                 balances.put(feeAccount, updatedFees);
             }
             markDirty();
+            metricsCache = null;
         }
         record(from, to, cents, purpose, actorUuid, institutionId, type, valid,
                 valid ? source - debit : source, valid ? updatedTarget : target);
@@ -153,11 +173,12 @@ public class EconomyState extends PersistentState {
         return valid;
     }
 
-    public boolean adjust(String account, long delta, String purpose, String actorUuid,
+    public synchronized boolean adjust(String account, long delta, String purpose, String actorUuid,
                           String institutionId, String type) {
         ensureAccount(account);
         long current = balance(account);
-        boolean valid = delta != 0 && !(delta < 0 && (isFrozen(account) || current < -delta));
+        boolean valid = delta != 0 && delta != Long.MIN_VALUE
+                && !(delta < 0 && (isFrozen(account) || current < -delta));
         long updated = current;
         if (valid) {
             try { updated = Math.addExact(current, delta); }
@@ -166,6 +187,7 @@ public class EconomyState extends PersistentState {
         if (valid) {
             balances.put(account, updated);
             markDirty();
+            metricsCache = null;
         }
         String sender = delta < 0 ? account : "CASH";
         String recipient = delta < 0 ? "CASH" : account;
@@ -187,6 +209,54 @@ public class EconomyState extends PersistentState {
         return List.copyOf(result);
     }
 
+    public List<EconomyTransaction> transactionsByType(String type) {
+        if (type == null || type.isBlank()) return transactions();
+        return reversed(typeTransactions.getOrDefault(type, List.of()));
+    }
+
+    public List<EconomyTransaction> transactionsByTypes(Set<String> types) {
+        if (types == null || types.isEmpty()) return transactions();
+        List<EconomyTransaction> result = new ArrayList<>();
+        for (String type : types) result.addAll(typeTransactions.getOrDefault(type, List.of()));
+        result.sort((left, right) -> Long.compare(right.timestamp(), left.timestamp()));
+        return List.copyOf(result);
+    }
+
+    public synchronized boolean issueMoney(String account, long amount, String purpose, String actorUuid) {
+        return amount > 0 && adjust(account, amount, purpose, actorUuid, "CENTRAL_BANK", "CENTRAL_BANK_ISSUE");
+    }
+
+    public synchronized boolean retireMoney(String account, long amount, String purpose, String actorUuid) {
+        return amount > 0 && adjust(account, -amount, purpose, actorUuid, "CENTRAL_BANK", "CENTRAL_BANK_RETIRE");
+    }
+
+    public EconomyMetrics metrics() {
+        if (metricsCache != null) return metricsCache;
+        long players = 0, institutions = 0, administrations = 0, systems = 0;
+        for (Map.Entry<String, Long> entry : balances.entrySet()) {
+            String account = entry.getKey(); long balance = Math.max(0, entry.getValue());
+            if (account.startsWith("institution:")) institutions = saturatingAdd(institutions, balance);
+            else if (account.startsWith("area:")) administrations = saturatingAdd(administrations, balance);
+            else if (account.startsWith("system:")) systems = saturatingAdd(systems, balance);
+            else players = saturatingAdd(players, balance);
+        }
+        long successful = 0, rejected = 0, volume = 0, issued = 0, retired = 0;
+        for (EconomyTransaction transaction : transactions) {
+            if (transaction.successful()) {
+                successful++;
+                volume = saturatingAdd(volume, transaction.amount());
+                if (transaction.type().equals("CENTRAL_BANK_ISSUE")) issued = saturatingAdd(issued, transaction.amount());
+                if (transaction.type().equals("CENTRAL_BANK_RETIRE")) retired = saturatingAdd(retired, transaction.amount());
+            } else rejected++;
+        }
+        int frozen = 0;
+        for (BankAccount account : accounts.values()) if (account.frozen()) frozen++;
+        long total = saturatingAdd(saturatingAdd(players, institutions), saturatingAdd(administrations, systems));
+        metricsCache = new EconomyMetrics(total, players, institutions, administrations, systems,
+                Math.max(accounts.size(), balances.size()), frozen, successful, rejected, volume, issued, retired);
+        return metricsCache;
+    }
+
     private void record(String sender, String recipient, long amount, String purpose, String actorUuid,
                         String institutionId, String type, boolean successful, long senderBalance, long recipientBalance) {
         EconomyTransaction entry = new EconomyTransaction(UUID.randomUUID().toString(), System.currentTimeMillis(), sender, recipient,
@@ -195,6 +265,7 @@ public class EconomyState extends PersistentState {
                 successful, senderBalance, recipientBalance);
         transactions.add(entry);
         indexTransaction(entry);
+        metricsCache = null;
         if (ConfigManager.logging().logTransactions)
             TerraNexus.LOGGER.info("Buchung {} {} -> {}: {} [{}]", type, sender, recipient, amount, successful ? "OK" : "ABGELEHNT");
         markDirty();
@@ -212,6 +283,7 @@ public class EconomyState extends PersistentState {
         accountTransactions.computeIfAbsent(entry.sender(), ignored -> new ArrayList<>()).add(entry);
         if (!entry.recipient().equals(entry.sender())) accountTransactions.computeIfAbsent(entry.recipient(), ignored -> new ArrayList<>()).add(entry);
         if (!entry.institutionId().isBlank()) institutionTransactions.computeIfAbsent(entry.institutionId(), ignored -> new ArrayList<>()).add(entry);
+        typeTransactions.computeIfAbsent(entry.type(), ignored -> new ArrayList<>()).add(entry);
     }
     private static List<EconomyTransaction> reversed(List<EconomyTransaction> source) {
         List<EconomyTransaction> result = new ArrayList<>(source.size());
@@ -219,6 +291,10 @@ public class EconomyState extends PersistentState {
         return List.copyOf(result);
     }
     private static long powerOfTen(int digits) { long value = 1; for (int index = 0; index < digits; index++) value *= 10; return value; }
+    private static long saturatingAdd(long left, long right) {
+        try { return Math.addExact(left, right); }
+        catch (ArithmeticException overflow) { return Long.MAX_VALUE; }
+    }
     private static String normalizeAccountNumber(String number) { return number == null ? "" : number.replace(" ", "").toUpperCase(); }
     private static boolean isPlayerAccount(String account) { try { UUID.fromString(account); return true; } catch (IllegalArgumentException ignored) { return false; } }
     private static long transferFee(long amount) {

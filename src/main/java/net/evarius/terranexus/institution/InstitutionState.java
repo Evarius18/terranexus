@@ -39,13 +39,16 @@ public class InstitutionState extends PersistentState {
     }
     public static InstitutionState get(MinecraftServer server) { return server.getOverworld().getPersistentStateManager().getOrCreate(TYPE); }
 
-    public Institution create(String name, String type, UUID owner) {
+    public synchronized Institution create(String name, String type, UUID owner) {
+        String cleanName = name == null ? "" : name.trim();
+        if (!isNameAvailable(cleanName) || cleanName.length() > ConfigManager.institutions().maximumNameLength
+                || !ConfigManager.institutions().allowedTypes.contains(type)) return null;
         String id = UUID.randomUUID().toString();
         long now = System.currentTimeMillis();
         InstitutionEmployee ownerEmployee = new InstitutionEmployee(owner.toString(), InstitutionRole.OWNER.id(), now, 0,
                 now + payrollPeriodMillis(), "Gründer/in");
         Map<String, InstitutionEmployee> employees = Map.of(owner.toString(), ownerEmployee);
-        Institution institution = build(id, name, type, owner.toString(), employees);
+        Institution institution = build(id, cleanName, type, owner.toString(), employees);
         institutions.put(id, institution);
         invalidateCaches();
         markDirty();
@@ -213,10 +216,19 @@ public class InstitutionState extends PersistentState {
                 UUID employeeId;
                 try { employeeId = UUID.fromString(employee.playerUuid()); }
                 catch (IllegalArgumentException ignored) { continue; }
-                boolean paid = economy.transfer(EconomyState.institutionAccount(institution.id()),
+                long nextPayAt = now + payrollPeriodMillis();
+                boolean paid = economy.transferConditional(EconomyState.institutionAccount(institution.id()),
                         EconomyState.playerAccount(employeeId), employee.salary(), "Gehalt · " + institution.name(),
-                        "SYSTEM", institution.id(), "SALARY");
-                employees.put(employee.playerUuid(), employee.withNextPayAt(now + payrollPeriodMillis()));
+                        "SYSTEM", institution.id(), "SALARY", () -> {
+                            Institution latest = institutions.get(institution.id());
+                            if (latest == null || !employee.equals(latest.employees().get(employee.playerUuid()))) return false;
+                            Map<String, InstitutionEmployee> latestEmployees = new HashMap<>(latest.employees());
+                            latestEmployees.put(employee.playerUuid(), employee.withNextPayAt(nextPayAt));
+                            institutions.put(latest.id(), build(latest, latest.ownerUuid(), latestEmployees));
+                            invalidateCaches(); markDirty();
+                            return true;
+                        });
+                employees.put(employee.playerUuid(), employee.withNextPayAt(nextPayAt));
                 ServerPlayerEntity online = server.getPlayerManager().getPlayer(employeeId);
                 if (online != null && ConfigManager.salary().notifyEmployees) online.sendMessage(Text.literal(paid
                         ? "Gehalt von " + institution.name() + ": " + EconomyState.format(employee.salary())

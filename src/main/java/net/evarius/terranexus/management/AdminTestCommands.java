@@ -3,6 +3,9 @@ package net.evarius.terranexus.management;
 import net.evarius.terranexus.identity.AuthorityState;
 import net.evarius.terranexus.config.ConfigManager;
 import net.evarius.terranexus.landlord.LandlordState;
+import net.evarius.terranexus.landlord.LandManagementState;
+import net.evarius.terranexus.landlord.LandProperty;
+import net.evarius.terranexus.landlord.LandResolution;
 import net.evarius.terranexus.identity.IdentityState;
 import net.evarius.terranexus.identity.RoleplayNames;
 import net.evarius.terranexus.item.ModItems;
@@ -34,10 +37,25 @@ public final class AdminTestCommands {
                         .then(literal("reload-config").executes(context -> {
                             ConfigManager.reload();
                             LandlordState.get(context.getSource().getServer()).refreshRuntimeIndexes();
+                            LandManagementState.get(context.getSource().getServer()).refreshConfiguredHierarchy();
                             context.getSource().sendFeedback(() -> Text.literal("TerraNexus-Konfiguration neu geladen: " + ConfigManager.directory()), true);
                             return 1;
                         }))
+                        .then(literal("land-info").executes(context -> landInfo(context.getSource().getPlayerOrThrow())))
         ));
+    }
+
+    private static int landInfo(ServerPlayerEntity player) {
+        String dimension = player.getWorld().getRegistryKey().getValue().toString();
+        LandProperty property = LandlordState.get(player.getServer()).at(dimension, player.getBlockPos());
+        LandManagementState management = LandManagementState.get(player.getServer());
+        LandResolution resolution = management.resolve(property);
+        String explicit = property == null ? "Wilderness (virtuell)" : property.name() + " · " + property.id();
+        player.sendMessage(Text.literal("Fläche: " + explicit).formatted(Formatting.GOLD), false);
+        player.sendMessage(Text.literal("Zuständigkeit: " + resolution.jurisdiction().name()
+                + " · Eigentümer: " + resolution.ownerType() + ':' + resolution.ownerId()
+                + " · Nutzung: " + resolution.landUse()).formatted(Formatting.GRAY), false);
+        return 1;
     }
 
     private static int enable(ServerPlayerEntity player) {

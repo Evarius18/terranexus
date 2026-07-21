@@ -45,6 +45,7 @@ public final class LandlordScheduler {
                 EconomyScreen.retainOnline(online);
                 long now = System.currentTimeMillis();
                 LandManagementState.get(server).processRents(server, now);
+                LandManagementState.get(server).processAreaPayroll(server, now);
                 InstitutionState.get(server).processPayroll(server, now);
             }
         });
@@ -55,12 +56,21 @@ public final class LandlordScheduler {
     }
     private static void notifyProperty(ServerPlayerEntity player, String dimension) {
         LandProperty property = LandlordState.get(player.getServer()).at(dimension, player.getBlockPos());
-        String current = property == null ? "" : property.id();
+        LandManagementState management = LandManagementState.get(player.getServer());
+        LandResolution resolution = management.resolve(property);
+        String current = property == null ? LandManagementState.ROOT_AREA_ID : property.id();
         String previous = LAST_PROPERTY.getOrDefault(player.getUuid(), "");
         if (current.equals(previous)) return;
         LAST_PROPERTY.put(player.getUuid(), current);
-        if (property != null) player.sendMessage(Text.literal("Grundstück: ").formatted(Formatting.GOLD)
-                .append(Text.literal(property.name()).formatted(Formatting.WHITE)), true);
-        else if (!previous.isBlank()) player.sendMessage(Text.literal("Grundstück verlassen").formatted(Formatting.GRAY), true);
+        if (property != null) {
+            Text message = Text.literal("Grundstück: ").formatted(Formatting.GOLD)
+                    .append(Text.literal(property.name()).formatted(Formatting.WHITE));
+            if (resolution.jurisdiction() != null
+                    && !LandManagementState.ROOT_AREA_ID.equals(resolution.jurisdiction().id()))
+                message = message.copy().append(Text.literal(" · " + resolution.jurisdiction().name()).formatted(Formatting.GRAY));
+            player.sendMessage(message, true);
+        }
+        else player.sendMessage(Text.literal("Gebiet: ").formatted(Formatting.GRAY)
+                .append(Text.literal(resolution.jurisdiction().name()).formatted(Formatting.WHITE)), true);
     }
 }

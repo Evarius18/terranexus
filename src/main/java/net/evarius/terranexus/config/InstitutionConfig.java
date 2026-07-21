@@ -12,7 +12,8 @@ public final class InstitutionConfig {
     public long creationFee = 0;
     public String defaultEmployeeRole = "employee";
     public List<String> allowedRoles = new ArrayList<>(List.of("director", "manager", "auditor", "accountant", "hr", "employee"));
-    public List<String> allowedTypes = new ArrayList<>(List.of("Behörde", "Unternehmen", "Bank/Finanzinstitut", "Verein", "Partei", "Bildungseinrichtung", "Rettungsorganisation", "Sonstige Institution"));
+    public List<String> allowedTypes = new ArrayList<>(List.of("Behörde", "Unternehmen", "Bank/Finanzinstitut", "Zentralbank", "Verein", "Partei", "Bildungseinrichtung", "Rettungsorganisation", "Sonstige Institution"));
+    public List<String> centralBankTypeKeywords = new ArrayList<>(List.of("Zentralbank", "Central Bank"));
 
     void validate() {
         maximumEmployees = ConfigManager.clamp(maximumEmployees, 1, 10_000);
@@ -26,5 +27,12 @@ public final class InstitutionConfig {
         if (!allowedRoles.contains(defaultEmployeeRole)) defaultEmployeeRole = allowedRoles.contains("employee") ? "employee" : allowedRoles.getFirst();
         allowedTypes = ConfigManager.uniqueText(allowedTypes, 24, 64);
         if (allowedTypes.isEmpty()) allowedTypes = List.of("Sonstige Institution");
+        centralBankTypeKeywords = ConfigManager.uniqueText(centralBankTypeKeywords, 8, 48);
+        if (centralBankTypeKeywords.isEmpty()) centralBankTypeKeywords = List.of("Zentralbank");
+        if (allowedTypes.stream().noneMatch(type -> type.equalsIgnoreCase("Zentralbank"))) {
+            List<String> migrated = new ArrayList<>(allowedTypes);
+            migrated.add("Zentralbank");
+            allowedTypes = migrated;
+        }
     }
 }

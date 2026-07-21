@@ -24,7 +24,9 @@ public final class AdminDesktopScreen {
         boolean institution = AuthorityState.isTnAdmin(player)
                 || !InstitutionState.get(player.getServer()).forMember(player.getUuid()).isEmpty();
         boolean bank = InstitutionAccess.hasBankPermission(player, InstitutionPermission.BANK_VIEW_ACCOUNTS);
-        if (!identity && !land && !institution && !bank) {
+        boolean centralBank = InstitutionAccess.hasCentralBankPermission(player, InstitutionPermission.CENTRAL_BANK_VIEW);
+        boolean areaFinance = AreaFinanceScreen.hasManagedArea(player);
+        if (!identity && !land && !institution && !bank && !centralBank && !areaFinance) {
             player.sendMessage(Text.literal("Dieser Verwaltungs-PC ist nur für autorisierte Bedienstete freigeschaltet.").formatted(Formatting.RED), false);
             return;
         }
@@ -52,6 +54,14 @@ public final class AdminDesktopScreen {
         if (AuthorityState.mayAdministerLand(player)) {
             ManagementHubScreen.display(inventory, 31, Items.WRITABLE_BOOK, "Grundstücks-Audit", "Persistente Änderungen und Eigentümerwechsel");
             actions.put(31, ignored -> LandSearchScreen.audit(player));
+        }
+        if (centralBank) {
+            ManagementHubScreen.display(inventory, 33, Items.BEACON, "Zentralbank", "Geldmenge, Geldflüsse und Geldpolitik");
+            actions.put(33, ignored -> CentralBankScreen.open(player));
+        }
+        if (areaFinance) {
+            ManagementHubScreen.display(inventory, 35, Items.MAP, "Verwaltungsfinanzen", "Gebietskonten, Personal und Gehälter");
+            actions.put(35, ignored -> AreaFinanceScreen.open(player));
         }
         player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
                 (id, inventory1, ignored) -> new ActionMenuScreenHandler(id, inventory1, inventory, actions),

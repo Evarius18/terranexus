@@ -17,6 +17,9 @@
 	"entrypoints": {
 		"main": [
 			"net.evarius.terranexus.TerraNexus"
+		],
+		"client": [
+			"net.evarius.terranexus.TerraNexusClient"
 		]
 	},
 	"mixins": [

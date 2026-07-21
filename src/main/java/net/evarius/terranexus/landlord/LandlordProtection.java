@@ -4,6 +4,8 @@ import net.evarius.terranexus.identity.AuthorityState;
 import net.evarius.terranexus.config.ConfigManager;
 import net.evarius.terranexus.institution.InstitutionState;
 import net.evarius.terranexus.logging.AuditLogger;
+import net.evarius.terranexus.shop.ShopRecord;
+import net.evarius.terranexus.shop.ShopService;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
@@ -49,6 +51,13 @@ public final class LandlordProtection {
             if (world.isClient() || !(player instanceof ServerPlayerEntity serverPlayer)) return ActionResult.PASS;
             Item held = player.getStackInHand(hand).getItem();
             BlockPos target = hit.getBlockPos();
+            if (world instanceof ServerWorld serverWorld) {
+                ShopRecord signShop = ShopService.atSign(serverWorld, target);
+                if (signShop != null) return ActionResult.PASS;
+                ShopRecord containerShop = ShopService.atContainer(serverWorld, target);
+                if (containerShop != null)
+                    return ShopService.mayManage(serverPlayer, containerShop) ? ActionResult.PASS : ActionResult.FAIL;
+            }
             if (isBlockMutatingItem(held)) {
                 if (!check(serverPlayer, target, LandAccess.BUILD)) return ActionResult.FAIL;
                 BlockPos affected = held instanceof BlockItem
@@ -79,7 +88,8 @@ public final class LandlordProtection {
             if (!ConfigManager.claims().preventPvpInsideClaims || !(target instanceof ServerPlayerEntity victim)) return true;
             ServerPlayerEntity attacker = responsiblePlayer(source.getAttacker());
             if (attacker == null || attacker == victim || attacker.hasPermissionLevel(2)) return true;
-            return propertyAt(victim.getWorld(), victim.getBlockPos()) == null;
+            return propertyAt(victim.getWorld(), victim.getBlockPos()) == null
+                    && !ConfigManager.administration().wildernessPreventPvp;
         });
     }
 
@@ -89,12 +99,19 @@ public final class LandlordProtection {
 
     public static boolean isAllowed(ServerPlayerEntity player, World world, BlockPos pos, String permission) {
         if (player.hasPermissionLevel(2) || AuthorityState.mayAdministerLand(player)) return true;
-        LandProperty property = propertyAt(world, pos);
-        if (property == null || property.isOwnedBy(player.getUuid())) return true;
         if (!protectionEnabled(permission)) return true;
-        if (property.ownerType().equals("institution")
-                && InstitutionState.get(player.getServer()).mayManage(property.ownerId(), player.getUuid())) return true;
+        LandProperty property = propertyAt(world, pos);
         LandManagementState management = LandManagementState.get(player.getServer());
+        LandResolution resolution = management.resolve(property);
+        if (resolution.wilderness()) {
+            return management.mayManageArea(LandManagementState.ROOT_AREA_ID, player)
+                    || management.wildernessPermits(permission);
+        }
+        if (property.isOwnedBy(player.getUuid())) return true;
+        if (resolution.ownerType().equals("institution")
+                && InstitutionState.get(player.getServer()).mayManage(resolution.ownerId(), player.getUuid())) return true;
+        if (resolution.ownerType().equals(LandManagementState.AREA_OWNER_TYPE)
+                && management.mayManageArea(resolution.ownerId(), player)) return true;
         return management.isTenant(property.id(), player.getUuid())
                 || management.access(property.id()).permits(player.getUuidAsString(), permission);
     }
@@ -106,31 +123,35 @@ public final class LandlordProtection {
     }
 
     public static boolean remainsInSameProtectionArea(World world, BlockPos origin, Collection<BlockPos> affected) {
-        String originId = propertyId(propertyAt(world, origin));
+        String originId = protectionAreaId(propertyAt(world, origin));
         for (BlockPos pos : affected) {
-            if (!Objects.equals(originId, propertyId(propertyAt(world, pos)))) return false;
+            if (!Objects.equals(originId, protectionAreaId(propertyAt(world, pos)))) return false;
         }
         return true;
     }
 
     public static boolean remainsInSameProtectionArea(World world, BlockPos from, BlockPos to) {
-        return Objects.equals(propertyId(propertyAt(world, from)), propertyId(propertyAt(world, to)));
+        return Objects.equals(protectionAreaId(propertyAt(world, from)), protectionAreaId(propertyAt(world, to)));
     }
 
     public static boolean explosionMayChange(ServerWorld world, Entity cause, BlockPos pos) {
         LandProperty property = propertyAt(world, pos);
-        if (property == null) return true;
+        if (property == null) return !ConfigManager.administration().wildernessEnvironmentalProtection;
         ServerPlayerEntity responsible = responsiblePlayer(cause);
         return responsible != null && isAllowed(responsible, world, pos, LandAccess.BUILD);
+    }
+
+    public static boolean environmentProtected(World world, BlockPos pos) {
+        return propertyAt(world, pos) != null || ConfigManager.administration().wildernessEnvironmentalProtection;
     }
 
     private static boolean check(ServerPlayerEntity player, BlockPos pos, String permission) {
         if (isAllowed(player, pos, permission)) return true;
         LandProperty property = propertyAt(player.getWorld(), pos);
-        if (property != null) {
-            AuditLogger.denied(player, "claims", permission + '@' + property.id());
-            player.sendMessage(Text.literal("Keine Berechtigung für „" + property.name() + "“.").formatted(Formatting.RED), true);
-        }
+        String targetId = property == null ? LandManagementState.ROOT_AREA_ID : property.id();
+        String targetName = property == null ? ConfigManager.administration().wildernessName : property.name();
+        AuditLogger.denied(player, "claims", permission + '@' + targetId);
+        player.sendMessage(Text.literal("Keine Berechtigung für „" + targetName + "“.").formatted(Formatting.RED), true);
         return false;
     }
 
@@ -156,8 +177,8 @@ public final class LandlordProtection {
         return null;
     }
 
-    private static String propertyId(LandProperty property) {
-        return property == null ? "" : property.id();
+    private static String protectionAreaId(LandProperty property) {
+        return property == null ? LandManagementState.ROOT_AREA_ID : property.id();
     }
 
     private static boolean isBlockMutatingItem(Item item) {

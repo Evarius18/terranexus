@@ -9,6 +9,9 @@ import net.evarius.terranexus.landlord.LandAuditState;
 import net.evarius.terranexus.landlord.LandManagementState;
 import net.evarius.terranexus.landlord.LandProperty;
 import net.evarius.terranexus.landlord.LandlordState;
+import net.evarius.terranexus.landlord.AdministrativeArea;
+import net.evarius.terranexus.institution.Institution;
+import net.evarius.terranexus.institution.InstitutionState;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Items;
 import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
@@ -38,8 +41,12 @@ public final class LandSearchScreen {
     private static void results(ServerPlayerEntity player, String query, int requestedPage) {
         IdentityState identities = IdentityState.get(player.getServer());
         LandManagementState management = LandManagementState.get(player.getServer());
-        List<SearchResult> matches = LandlordState.get(player.getServer()).all().stream().map(property ->
-                        new SearchResult(property, ownerName(identities, property), management.address(property.id())))
+        List<SearchResult> matches = LandlordState.get(player.getServer()).all().stream().map(property -> {
+                    AdministrativeArea area = management.jurisdiction(property);
+                    return new SearchResult(property, ownerName(player, identities, management, property),
+                            management.address(property.id()), management.landUse(property.id()),
+                            area == null ? "" : area.name());
+                })
                 .filter(result -> matches(result, query)).toList();
         int pageSize = ConfigManager.desktop().standardEntriesPerPage;
         int pages = Math.max(1, (matches.size() + pageSize - 1) / pageSize);
@@ -55,7 +62,7 @@ public final class LandSearchScreen {
         int slot = 9;
         for (SearchResult result : matches.subList(page * pageSize, Math.min(matches.size(), (page + 1) * pageSize))) {
             ManagementHubScreen.display(inventory, slot, Items.PAPER, result.property.name(),
-                    result.address + " · " + result.property.id() + " · " + result.owner);
+                    result.address + " · " + result.use + " · " + result.jurisdiction + " · " + result.owner);
             actions.put(slot++, ignored -> PropertyFinanceScreen.open(player, result.property));
         }
         openMenu(player, inventory, actions, "Grundstückssuche");
@@ -82,9 +89,20 @@ public final class LandSearchScreen {
         return result.property.id().toLowerCase(Locale.ROOT).contains(query)
                 || result.property.name().toLowerCase(Locale.ROOT).contains(query)
                 || result.owner.toLowerCase(Locale.ROOT).contains(query)
-                || result.address.toLowerCase(Locale.ROOT).contains(query);
+                || result.address.toLowerCase(Locale.ROOT).contains(query)
+                || result.use.toLowerCase(Locale.ROOT).contains(query)
+                || result.jurisdiction.toLowerCase(Locale.ROOT).contains(query);
     }
-    private static String ownerName(IdentityState identities, LandProperty property) {
+    private static String ownerName(ServerPlayerEntity player, IdentityState identities,
+                                    LandManagementState management, LandProperty property) {
+        if (property.ownerType().equals("institution")) {
+            Institution institution = InstitutionState.get(player.getServer()).get(property.ownerId());
+            return institution == null ? property.ownerId() : institution.name();
+        }
+        if (property.ownerType().equals(LandManagementState.AREA_OWNER_TYPE)) {
+            AdministrativeArea area = management.area(property.ownerId());
+            return area == null ? ConfigManager.administration().wildernessName : area.name();
+        }
         if (!property.ownerType().equals("player")) return property.ownerType() + ':' + property.ownerId();
         try {
             CitizenIdentity identity = identities.get(UUID.fromString(property.ownerId()));
@@ -101,5 +119,5 @@ public final class LandSearchScreen {
         player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, inventory1, ignored) ->
                 new ActionMenuScreenHandler(id, inventory1, inventory, actions), Text.literal(title).formatted(Formatting.DARK_GREEN)));
     }
-    private record SearchResult(LandProperty property, String owner, String address) {}
+    private record SearchResult(LandProperty property, String owner, String address, String use, String jurisdiction) {}
 }

@@ -13,8 +13,10 @@ public enum InstitutionRole {
             InstitutionPermission.MANAGE_FINANCES, InstitutionPermission.VIEW_AUDIT,
             InstitutionPermission.MANAGE_SALARIES, InstitutionPermission.MANAGE_SETTINGS,
             InstitutionPermission.MANAGE_TASKS, InstitutionPermission.MANAGE_INVOICES,
+            InstitutionPermission.MANAGE_PROPERTY,
             InstitutionPermission.BANK_VIEW_ACCOUNTS, InstitutionPermission.BANK_CASH_OPERATIONS,
-            InstitutionPermission.BANK_FREEZE_ACCOUNTS)),
+            InstitutionPermission.BANK_FREEZE_ACCOUNTS, InstitutionPermission.CENTRAL_BANK_VIEW,
+            InstitutionPermission.CENTRAL_BANK_MONETARY_POLICY)),
     MANAGER("manager", "Manager", 60, EnumSet.of(
             InstitutionPermission.VIEW_MEMBERS, InstitutionPermission.MANAGE_EMPLOYEES,
             InstitutionPermission.VIEW_FINANCES, InstitutionPermission.VIEW_AUDIT,
@@ -22,12 +24,13 @@ public enum InstitutionRole {
             InstitutionPermission.BANK_VIEW_ACCOUNTS, InstitutionPermission.BANK_FREEZE_ACCOUNTS)),
     AUDITOR("auditor", "Auditor", 50, EnumSet.of(
             InstitutionPermission.VIEW_MEMBERS, InstitutionPermission.VIEW_FINANCES,
-            InstitutionPermission.VIEW_AUDIT, InstitutionPermission.BANK_VIEW_ACCOUNTS)),
+            InstitutionPermission.VIEW_AUDIT, InstitutionPermission.BANK_VIEW_ACCOUNTS,
+            InstitutionPermission.CENTRAL_BANK_VIEW)),
     ACCOUNTANT("accountant", "Accountant", 50, EnumSet.of(
             InstitutionPermission.VIEW_MEMBERS, InstitutionPermission.VIEW_FINANCES,
             InstitutionPermission.MANAGE_FINANCES, InstitutionPermission.VIEW_AUDIT,
             InstitutionPermission.MANAGE_SALARIES, InstitutionPermission.MANAGE_INVOICES, InstitutionPermission.BANK_VIEW_ACCOUNTS,
-            InstitutionPermission.BANK_CASH_OPERATIONS)),
+            InstitutionPermission.BANK_CASH_OPERATIONS, InstitutionPermission.CENTRAL_BANK_VIEW)),
     HR("hr", "HR", 50, EnumSet.of(
             InstitutionPermission.VIEW_MEMBERS, InstitutionPermission.MANAGE_EMPLOYEES,
             InstitutionPermission.MANAGE_ROLES)),

@@ -56,6 +56,24 @@ public class LandlordState extends PersistentState {
     public LandProperty get(String id) { return properties.get(id); }
     public void refreshRuntimeIndexes() { rebuildIndex(); invalidateViews(); }
 
+    public int normalizeOwnerships(LandManagementState management) {
+        int changed = 0;
+        for (Map.Entry<String, LandProperty> entry : properties.entrySet()) {
+            LandProperty property = entry.getValue();
+            boolean valid = property.ownerId() != null && !property.ownerId().isBlank() && switch (property.ownerType()) {
+                case "player", "institution" -> true;
+                case LandManagementState.AREA_OWNER_TYPE -> management.area(property.ownerId()) != null;
+                default -> false;
+            };
+            if (!valid) {
+                entry.setValue(property.withOwner(LandManagementState.AREA_OWNER_TYPE, LandManagementState.ROOT_AREA_ID));
+                changed++;
+            }
+        }
+        if (changed > 0) { invalidateViews(); markDirty(); }
+        return changed;
+    }
+
     public LandProperty at(String dimension, BlockPos pos) {
         LandProperty indexed = firstContaining(chunkIndex.get(key(dimension, pos.getX() >> 4, pos.getZ() >> 4)), dimension,
                 pos.getX(), pos.getY(), pos.getZ());
@@ -69,7 +87,7 @@ public class LandlordState extends PersistentState {
     }
 
     public boolean add(LandProperty property) {
-        if (overlapsOther(property, property.id())) return false;
+        if (properties.containsKey(property.id()) || overlapsOther(property, property.id())) return false;
         properties.put(property.id(), property);
         index(property);
         invalidateViews();

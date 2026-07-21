@@ -81,12 +81,17 @@ public final class InstitutionScreen {
                 open(player); return;
             }
             long fee = ConfigManager.institutions().creationFee;
-            if (fee > 0 && !EconomyState.get(player.getServer()).transfer(EconomyState.playerAccount(player.getUuid()),
-                    "system:institution_fees", fee, "Gründungsgebühr · " + values.get(0), player.getUuidAsString(), "", "INSTITUTION_CREATION_FEE")) {
-                player.sendMessage(Text.literal("Die konfigurierten Gründungskosten können nicht bezahlt werden.").formatted(Formatting.RED), false);
+            Institution[] created = new Institution[1];
+            boolean success = fee == 0 ? (created[0] = state.create(values.get(0), type, player.getUuid())) != null
+                    : EconomyState.get(player.getServer()).transferConditional(EconomyState.playerAccount(player.getUuid()),
+                    "system:institution_fees", fee, "Gründungsgebühr · " + values.get(0), player.getUuidAsString(), "",
+                    "INSTITUTION_CREATION_FEE", () -> mayCreate(player)
+                            && (created[0] = state.create(values.get(0), type, player.getUuid())) != null);
+            if (!success || created[0] == null) {
+                player.sendMessage(Text.literal("Die Institution konnte nicht angelegt oder die Gründungsgebühr nicht bezahlt werden.").formatted(Formatting.RED), false);
                 open(player); return;
             }
-            Institution institution = state.create(values.get(0), type, player.getUuid());
+            Institution institution = created[0];
             EconomyState.get(player.getServer()).ensureAccount(EconomyState.institutionAccount(institution.id()));
             InstitutionManagementScreen.open(player, institution.id());
         }, () -> createStep(player, new ArrayList<>(), 0));

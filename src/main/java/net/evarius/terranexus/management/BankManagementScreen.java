@@ -83,7 +83,7 @@ public final class BankManagementScreen {
             button(inventory, actions, 22, Items.LIME_DYE, "Einzahlung", "Bankschalter-Gutschrift", ignored -> cash(player, accountKey, true));
             button(inventory, actions, 24, Items.RED_DYE, "Auszahlung", "Bankschalter-Belastung", ignored -> cash(player, accountKey, false));
         }
-        if ((ConfigManager.bank().accountFreezingEnabled || account.frozen())
+        if (!accountKey.startsWith("system:") && (ConfigManager.bank().accountFreezingEnabled || account.frozen())
                 && InstitutionAccess.hasBankPermission(player, InstitutionPermission.BANK_FREEZE_ACCOUNTS)) {
             button(inventory, actions, 31, account.frozen() ? Items.LIME_DYE : Items.BARRIER,
                     account.frozen() ? "Konto entsperren" : "Konto sperren", "Statusänderung wird protokolliert", ignored -> {
@@ -172,7 +172,7 @@ public final class BankManagementScreen {
                 || account.accountKey().toLowerCase(Locale.ROOT).contains(needle);
     }
 
-    private static void ensureKnownAccounts(ServerPlayerEntity player, EconomyState economy) {
+    static void ensureKnownAccounts(ServerPlayerEntity player, EconomyState economy) {
         for (CitizenIdentity identity : IdentityState.get(player.getServer()).all()) {
             try { economy.ensureAccount(EconomyState.playerAccount(UUID.fromString(identity.playerUuid()))); }
             catch (IllegalArgumentException ignored) {}
@@ -215,7 +215,8 @@ public final class BankManagementScreen {
         return AuthorityState.isTnAdmin(player) ? "TNADMIN_TEST" : "";
     }
     private static boolean mayView(ServerPlayerEntity player) {
-        return InstitutionAccess.hasBankPermission(player, InstitutionPermission.BANK_VIEW_ACCOUNTS);
+        return InstitutionAccess.hasBankPermission(player, InstitutionPermission.BANK_VIEW_ACCOUNTS)
+                || InstitutionAccess.hasCentralBankPermission(player, InstitutionPermission.CENTRAL_BANK_VIEW);
     }
     private static void input(ServerPlayerEntity player, String title, Consumer<String> done) {
         player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, inventory, ignored) ->

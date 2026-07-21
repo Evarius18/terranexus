@@ -41,7 +41,8 @@ Bankrollen und ihre Rechte sind absichtlich nicht konfigurierbar.
 - optionale Gründungsgebühr;
 - Standardrolle neuer Mitarbeiter;
 - Rollen, die künftig vergeben werden dürfen;
-- auswählbare Institutionsarten.
+- auswählbare Institutionsarten;
+- Bezeichnungen, anhand derer eine Institution als Zentralbank erkannt wird.
 
 `owner` kann nicht deaktiviert oder als normale Rolle vergeben werden. Werden Rollen aus der Liste entfernt,
 bleiben vorhandene Mitarbeiterdatensätze aus Gründen der Rückwärtskompatibilität erhalten.
@@ -51,7 +52,9 @@ bleiben vorhandene Mitarbeiterdatensätze aus Gründen der Rückwärtskompatibil
 - automatische Gehaltsläufe aktivieren oder pausieren;
 - Zahlungsintervall in Minuten;
 - Standard- und Höchstgehalt;
-- Benachrichtigungen für Mitarbeiter und verantwortliches Personal.
+- Benachrichtigungen für Mitarbeiter und verantwortliches Personal;
+- maximale Mitarbeiterzahl je Verwaltungsebene;
+- Gehaltsgruppen und Standardbeträge für Städte, Gemeinden und andere Verwaltungsebenen.
 
 Beim Pausieren werden keine Datensätze gelöscht. Nach einer erneuten Aktivierung wird ein überfälliger Lauf
 beim nächsten Wartungsintervall verarbeitet.
@@ -68,6 +71,33 @@ beim nächsten Wartungsintervall verarbeitet.
 - optionales PvP-Verbot innerhalb von Grundstücken.
 
 Der Bauschutz, Eigentumsprüfung und individuelle Berechtigungsprüfung können nicht deaktiviert werden.
+
+### `shops.json`
+
+- Shopsystem aktivieren oder pausieren;
+- Shops ausschließlich auf geclaimten Grundstücken verlangen;
+- Ankauf von Spieler-Items aktivieren;
+- maximale Shopanzahl je Eigentümer;
+- maximale Itemmenge je Transaktion;
+- maximaler Einzelpreis.
+
+Ein Deaktivieren pausiert Interaktion und Neuanlage, löscht aber keine gespeicherten Shops. Eigentums-, Bestands-
+und Kontoprüfungen sind nicht konfigurierbar und bleiben immer verpflichtend.
+
+### `administration.json`
+
+- Name und Ebenenbezeichnung der unveränderlichen Wilderness-Wurzel;
+- frei benennbare Hierarchieebenen von der kleinsten bis zur größten Einheit;
+- maximale Zahl und Namenslänge von Verwaltungseinheiten;
+- auswählbare private und öffentliche Flächennutzungen;
+- sichere Standardfreigaben für öffentliche Straßen, Wege, Parks, Plätze und Gewässer;
+- öffentliche Rechte, optionale PvP-Sperre und Umweltschutz der virtuellen Wilderness-Fläche.
+
+Die Position eines Levels in `hierarchyLevels` ist seine stabile Hierarchiestufe. Anzeigenamen können geändert
+werden, ohne gespeicherte Einheiten neu anzulegen. Beim Umsortieren ändert sich dagegen bewusst die fachliche
+Bedeutung der Stufe. Die Wilderness-Wurzel kann weder gelöscht noch als normales Spielereigentum übertragen
+werden. Auch wenn `wildernessPublicBuildingAllowed` aktiviert wird, durchläuft jeder Bauversuch weiterhin die
+zentrale Berechtigungsprüfung.
 
 ### `immigration.json`
 
@@ -113,7 +143,7 @@ Gehaltsintervall gelesen. Sie wird weder gelöscht noch überschrieben. Welt-Per
 und Datenformate; eine manuelle Datenmigration ist nicht erforderlich.
 
 Operatoren können Änderungen mit `/tnadmin reload-config` übernehmen. Strukturabhängige
-Grundstücksindizes werden dabei direkt neu aufgebaut. Für Änderungen an Mixins oder Mod-Dateien ist weiterhin
+Grundstücksindizes und die konfigurierbaren Hierarchiebezeichnungen werden dabei direkt neu aufgebaut. Für Änderungen an Mixins oder Mod-Dateien ist weiterhin
 ein Serverneustart erforderlich.
 
 Minecraft verwaltet das Speichern der PersistentStates und die Container-Synchronisation selbst. Eigene

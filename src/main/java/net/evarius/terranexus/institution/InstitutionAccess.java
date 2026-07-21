@@ -1,6 +1,7 @@
 package net.evarius.terranexus.institution;
 
 import net.evarius.terranexus.identity.AuthorityState;
+import net.evarius.terranexus.config.ConfigManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 
 public final class InstitutionAccess {
@@ -23,6 +24,19 @@ public final class InstitutionAccess {
         for (Institution institution : state.forMember(player.getUuid())) {
             String type = institution.type().toLowerCase(java.util.Locale.ROOT);
             if ((type.contains("bank") || type.contains("finanz")) && has(player, institution.id(), permission)) return true;
+        }
+        return false;
+    }
+
+    public static boolean hasCentralBankPermission(ServerPlayerEntity player, InstitutionPermission permission) {
+        if (AuthorityState.isTnAdmin(player)) return true;
+        InstitutionState state = InstitutionState.get(player.getServer());
+        for (Institution institution : state.forMember(player.getUuid())) {
+            String type = institution.type().toLowerCase(java.util.Locale.ROOT);
+            if (ConfigManager.institutions().centralBankTypeKeywords.stream()
+                    .map(value -> value.toLowerCase(java.util.Locale.ROOT))
+                    .anyMatch(type::contains)
+                    && has(player, institution.id(), permission)) return true;
         }
         return false;
     }

@@ -66,10 +66,11 @@ public final class EconomyScreen {
                 button(inventory, actions, slot++, Items.BRICKS, "Überweisen an " + institution.name(), institution.type(),
                         ignored -> openAmountInput(player, source, target, institution.name()));
             }
-            for (AdministrativeArea area : LandManagementState.get(player.getServer()).areas()) {
+            LandManagementState recipientLandManagement = LandManagementState.get(player.getServer());
+            for (AdministrativeArea area : recipientLandManagement.areas()) {
                 String target = EconomyState.areaAccount(area.id());
                 if (target.equals(source) || slot >= 54) continue;
-                button(inventory, actions, slot++, Items.FILLED_MAP, "Überweisen an " + area.name(), area.type(),
+                button(inventory, actions, slot++, Items.FILLED_MAP, "Überweisen an " + area.name(), recipientLandManagement.levelName(area.level()),
                         ignored -> openAmountInput(player, source, target, area.name()));
             }
         } else {
@@ -87,6 +88,14 @@ public final class EconomyScreen {
         open(player);
     }
 
+    public static void openArea(ServerPlayerEntity player, String areaId) {
+        if (!LandManagementState.get(player.getServer()).mayManageAreaFinances(areaId, player)) {
+            error(player, "Keine Berechtigung für dieses Verwaltungskonto."); return;
+        }
+        SELECTED_ACCOUNTS.put(player.getUuid(), EconomyState.areaAccount(areaId));
+        open(player);
+    }
+
     private static void openAccountSelection(ServerPlayerEntity player, int requestedPage) {
         SimpleInventory inventory = new SimpleInventory(54);
         Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
@@ -100,10 +109,11 @@ public final class EconomyScreen {
             String account = EconomyState.institutionAccount(institution.id());
             choices.add(new AccountChoice(account, institution.name(), Items.BRICKS));
         }
-        for (AdministrativeArea area : LandManagementState.get(player.getServer()).areas()) {
-            if (!area.ownerId().equals(player.getUuidAsString()) && !AuthorityState.mayManageLand(player)) continue;
+        LandManagementState landManagement = LandManagementState.get(player.getServer());
+        for (AdministrativeArea area : landManagement.areas()) {
+            if (!landManagement.mayManageAreaFinances(area.id(), player)) continue;
             String account = EconomyState.areaAccount(area.id());
-            choices.add(new AccountChoice(account, area.type() + " · " + area.name(), Items.FILLED_MAP));
+            choices.add(new AccountChoice(account, landManagement.levelName(area.level()) + " · " + area.name(), Items.FILLED_MAP));
         }
         int pageSize = ConfigManager.desktop().standardEntriesPerPage;
         int pages = Math.max(1, (choices.size() + pageSize - 1) / pageSize);
@@ -190,6 +200,14 @@ public final class EconomyScreen {
                     if (!target.equals(source)) { openAmountInput(player, source, target, institution.name()); return; }
                 }
             }
+            LandManagementState management = LandManagementState.get(player.getServer());
+            for (AdministrativeArea area : management.areas()) {
+                String label = (area.name() + " " + management.levelName(area.level())).toLowerCase(java.util.Locale.ROOT);
+                if (label.contains(query)) {
+                    String target = EconomyState.areaAccount(area.id()); economy.ensureAccount(target);
+                    if (!target.equals(source)) { openAmountInput(player, source, target, area.name()); return; }
+                }
+            }
             error(player, "Kein Empfängerkonto gefunden."); open(player);
         });
     }
@@ -198,8 +216,8 @@ public final class EconomyScreen {
         if (account.equals(EconomyState.playerAccount(player.getUuid()))) return true;
         if (account.startsWith("institution:")) return InstitutionAccess.has(player, account.substring("institution:".length()), InstitutionPermission.VIEW_FINANCES);
         if (account.startsWith("area:")) {
-            AdministrativeArea area = LandManagementState.get(player.getServer()).area(account.substring("area:".length()));
-            return area != null && (area.ownerId().equals(player.getUuidAsString()) || AuthorityState.mayManageLand(player));
+            LandManagementState management = LandManagementState.get(player.getServer());
+            return management.mayManageAreaFinances(account.substring("area:".length()), player);
         }
         return false;
     }
@@ -237,7 +255,8 @@ public final class EconomyScreen {
     private static void error(ServerPlayerEntity player, String message) { player.sendMessage(Text.literal(message).formatted(Formatting.RED), false); }
     private static void home(ServerPlayerEntity player) {
         if (AuthorityState.mayManageIdentity(player) || AuthorityState.mayUseLandOffice(player)
-                || !InstitutionState.get(player.getServer()).forMember(player.getUuid()).isEmpty()) AdminDesktopScreen.open(player);
+                || !InstitutionState.get(player.getServer()).forMember(player.getUuid()).isEmpty()
+                || AreaFinanceScreen.hasManagedArea(player)) AdminDesktopScreen.open(player);
         else ManagementHubScreen.open(player);
     }
 

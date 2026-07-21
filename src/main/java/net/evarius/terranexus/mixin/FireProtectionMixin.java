@@ -20,14 +20,14 @@ public abstract class FireProtectionMixin {
     @Inject(method = "trySpreadingFire", at = @At("HEAD"), cancellable = true)
     private void terranexus$protectClaimedBlocks(World world, BlockPos pos, int spreadFactor,
                                                   Random random, int currentAge, CallbackInfo info) {
-        if (ConfigManager.claims().protectFire && LandlordProtection.propertyAt(world, pos) != null) info.cancel();
+        if (ConfigManager.claims().protectFire && LandlordProtection.environmentProtected(world, pos)) info.cancel();
     }
 
     @Redirect(method = "scheduledTick", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/server/world/ServerWorld;setBlockState(Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/block/BlockState;I)Z"))
     private boolean terranexus$preventNewFireInsideClaim(ServerWorld world, BlockPos pos, BlockState state, int flags) {
         if (ConfigManager.claims().protectFire && state.isOf(Blocks.FIRE) && world.getBlockState(pos).isAir()
-                && LandlordProtection.propertyAt(world, pos) != null) return false;
+                && LandlordProtection.environmentProtected(world, pos)) return false;
         return world.setBlockState(pos, state, flags);
     }
 }

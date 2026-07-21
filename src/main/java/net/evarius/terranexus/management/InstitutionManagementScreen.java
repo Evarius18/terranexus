@@ -5,6 +5,7 @@ import net.evarius.terranexus.economy.EconomyState;
 import net.evarius.terranexus.economy.EconomyTransaction;
 import net.evarius.terranexus.config.ConfigManager;
 import net.evarius.terranexus.identity.CitizenIdentity;
+import net.evarius.terranexus.identity.AuthorityState;
 import net.evarius.terranexus.identity.IdentityState;
 import net.evarius.terranexus.institution.Institution;
 import net.evarius.terranexus.institution.InstitutionAccess;
@@ -13,6 +14,9 @@ import net.evarius.terranexus.institution.InstitutionPermission;
 import net.evarius.terranexus.institution.InstitutionRole;
 import net.evarius.terranexus.institution.InstitutionState;
 import net.evarius.terranexus.logging.AuditLogger;
+import net.evarius.terranexus.landlord.LandManagementState;
+import net.evarius.terranexus.landlord.LandProperty;
+import net.evarius.terranexus.landlord.LandlordState;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Items;
 import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
@@ -61,8 +65,36 @@ public final class InstitutionManagementScreen {
                 || InstitutionAccess.has(player, institutionId, InstitutionPermission.TRANSFER_OWNERSHIP))
             button(inventory, actions, 25, Items.COMPARATOR, "Institutionseinstellungen", "Eigentum und Stammdaten",
                     ignored -> settings(player, institutionId));
+        if (InstitutionAccess.has(player, institutionId, InstitutionPermission.MANAGE_PROPERTY))
+            button(inventory, actions, 29, Items.FILLED_MAP, "Grundstücke und Gebäude", "Verkaufen, vermieten und Rechte verwalten",
+                    ignored -> properties(player, institutionId, 0));
         button(inventory, actions, 8, Items.ARROW, "Zurück", "Zur Institutionsübersicht", ignored -> InstitutionScreen.open(player));
         menu(player, inventory, actions, "Institution · Desktop");
+    }
+
+    private static void properties(ServerPlayerEntity player, String institutionId, int requestedPage) {
+        Institution institution = current(player, institutionId);
+        if (institution == null || !InstitutionAccess.has(player, institutionId, InstitutionPermission.MANAGE_PROPERTY)) { denied(player); return; }
+        List<LandProperty> properties = LandlordState.get(player.getServer()).all().stream()
+                .filter(property -> property.ownerType().equals("institution") && property.ownerId().equals(institutionId)).toList();
+        int pageSize = pageSize();
+        int pages = Math.max(1, (properties.size() + pageSize - 1) / pageSize);
+        int page = Math.max(0, Math.min(requestedPage, pages - 1));
+        SimpleInventory inventory = new SimpleInventory(54);
+        Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
+        ManagementHubScreen.display(inventory, 4, Items.FILLED_MAP, institution.name() + " · Flächen",
+                properties.size() + " Einträge · Seite " + (page + 1) + "/" + pages);
+        if (page > 0) button(inventory, actions, 0, Items.ARROW, "Vorherige Seite", "Seite " + page,
+                ignored -> properties(player, institutionId, page - 1));
+        if (page + 1 < pages) button(inventory, actions, 7, Items.ARROW, "Nächste Seite", "Seite " + (page + 2),
+                ignored -> properties(player, institutionId, page + 1));
+        button(inventory, actions, 8, Items.ARROW, "Zurück", "Zum Institutions-Desktop", ignored -> open(player, institutionId));
+        LandManagementState management = LandManagementState.get(player.getServer());
+        int slot = 9;
+        for (LandProperty property : properties.subList(page * pageSize, Math.min(properties.size(), (page + 1) * pageSize)))
+            button(inventory, actions, slot++, Items.PAPER, property.name(), management.address(property.id()) + " · " + management.landUse(property.id()),
+                    ignored -> PropertyFinanceScreen.open(player, property));
+        menu(player, inventory, actions, "Institution · Flächenhandel");
     }
 
     private static void employees(ServerPlayerEntity player, String institutionId, int requestedPage) {

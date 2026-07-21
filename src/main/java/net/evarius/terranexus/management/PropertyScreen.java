@@ -18,6 +18,7 @@ import net.evarius.terranexus.item.ModItems;
 import net.evarius.terranexus.landlord.LandlordState;
 import net.evarius.terranexus.landlord.PropertyDrafts;
 import net.evarius.terranexus.landlord.LandVisuals;
+import net.evarius.terranexus.landlord.AdministrativeArea;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Items;
 import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
@@ -51,7 +52,7 @@ public final class PropertyScreen {
         actions.put(8, ignored -> AdminDesktopScreen.open(player));
         ManagementHubScreen.display(inventory,7,Items.COMPASS,"Grundstück suchen","ID, Name oder Besitzer");actions.put(7,x->LandSearchScreen.ask(player));
         if(AuthorityState.mayAdministerLand(player)){ManagementHubScreen.display(inventory,6,Items.WRITABLE_BOOK,"Audit-Log","Erstellungen, Änderungen und Eigentümerwechsel");actions.put(6,x->LandSearchScreen.audit(player));}
-        if(AuthorityState.mayAdministerLand(player)){ManagementHubScreen.display(inventory, 17, Items.BELL, "Regionen und Gemeinden", "Verwaltungsebenen organisieren");actions.put(17, ignored -> LandAdministrationScreen.open(player));}
+        if(AuthorityState.mayAdministerLand(player)){ManagementHubScreen.display(inventory, 17, Items.BELL, "Verwaltungshierarchie", "Wilderness, Ebenen und Zuständigkeiten organisieren");actions.put(17, ignored -> LandAdministrationScreen.open(player));}
 
         for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) {
             int slot = 19 + (dz + 1) * 9 + dx + 1;
@@ -156,6 +157,9 @@ public final class PropertyScreen {
     private static void commitCreate(ServerPlayerEntity player, LandlordState state, LandProperty property) {
         if(!AuthorityState.maySurveyLand(player)){error(player,"Deine Vermessungsberechtigung ist nicht mehr gültig.");return;}
         if (state.add(property)) {
+            LandManagementState management = LandManagementState.get(player.getServer());
+            management.assignArea(property.id(), LandManagementState.ROOT_AREA_ID);
+            management.setLandUse(property.id(), ConfigManager.administration().privateLandUse);
             PropertyDrafts.POS1.remove(player.getUuid());
             if(property.regionType().equals("polygon"))LandSelectionState.get(player.getServer()).clear(player.getUuid());
             player.sendMessage(Text.literal("Grundstück „" + property.name() + "“ wurde angelegt.").formatted(Formatting.GREEN), false);
@@ -173,31 +177,79 @@ public final class PropertyScreen {
     private static void openOwnerSelection(ServerPlayerEntity player, LandProperty property) {
         if (!AuthorityState.mayProcessLandRecords(player)) { openEditor(player); return; }
         SimpleInventory inventory = new SimpleInventory(54); Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
-        ManagementHubScreen.display(inventory, 4, Items.WRITABLE_BOOK, "Eigentümer: " + property.name(), "Bürger oder Institution auswählen");
+        ManagementHubScreen.display(inventory, 4, Items.WRITABLE_BOOK, "Eigentümer: " + property.name(), "Eigentümerart auswählen");
         ManagementHubScreen.display(inventory, 8, Items.ARROW, "Zurück", "Zum Flächeneditor"); actions.put(8, ignored -> openEditor(player));
-        IdentityState identities = IdentityState.get(player.getServer()); int slot = 9;
-        for (CitizenIdentity identity : identities.allApproved()) {
-            if (slot >= 36) continue; UUID citizenId=UUID.fromString(identity.playerUuid());
-            String rpName = identity.firstName() + " " + identity.lastName();
-            button(inventory, actions, slot++, Items.PLAYER_HEAD, rpName, identity.citizenNumber(), ignored -> assignOwner(player, property, "player", citizenId.toString(), rpName));
-        }
-        slot = 36;
-        for (Institution institution : InstitutionState.get(player.getServer()).all()) {
-            if (slot >= 54) break;
-            button(inventory, actions, slot++, Items.BRICKS, institution.name(), institution.type(), ignored -> assignOwner(player, property, "institution", institution.id(), institution.name()));
-        }
+        button(inventory, actions, 20, Items.PLAYER_HEAD, "Bürger", "Freigeschaltete Bürgerakte", ignored -> playerOwners(player, property, 0));
+        button(inventory, actions, 22, Items.BRICKS, "Institution", "Unternehmen, Behörde oder Organisation", ignored -> institutionOwners(player, property, 0));
+        button(inventory, actions, 24, Items.FILLED_MAP, "Verwaltungseinheit", "Stadt, Gemeinde, Landkreis oder andere Ebene", ignored -> areaOwners(player, property, 0));
         openMenu(player, inventory, actions, "Eigentümer zuweisen");
     }
+
+    private static void playerOwners(ServerPlayerEntity player, LandProperty property, int requestedPage) {
+        List<CitizenIdentity> values = IdentityState.get(player.getServer()).allApproved();
+        int page = page(requestedPage, values.size());
+        SimpleInventory inventory = new SimpleInventory(54); Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
+        int start = page * 36;
+        for (int index = start; index < Math.min(start + 36, values.size()); index++) {
+            CitizenIdentity identity = values.get(index); String rpName = identity.firstName() + " " + identity.lastName();
+            button(inventory, actions, 9 + index - start, Items.PLAYER_HEAD, rpName, identity.citizenNumber(),
+                    ignored -> assignOwner(player, property, "player", identity.playerUuid(), rpName));
+        }
+        ownerNavigation(player, property, inventory, actions, page, values.size(), p -> playerOwners(player, property, p));
+        openMenu(player, inventory, actions, "Bürger als Eigentümer");
+    }
+
+    private static void institutionOwners(ServerPlayerEntity player, LandProperty property, int requestedPage) {
+        List<Institution> values = InstitutionState.get(player.getServer()).all(); int page = page(requestedPage, values.size());
+        SimpleInventory inventory = new SimpleInventory(54); Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>(); int start = page * 36;
+        for (int index = start; index < Math.min(start + 36, values.size()); index++) {
+            Institution institution = values.get(index);
+            button(inventory, actions, 9 + index - start, Items.BRICKS, institution.name(), institution.type(),
+                    ignored -> assignOwner(player, property, "institution", institution.id(), institution.name()));
+        }
+        ownerNavigation(player, property, inventory, actions, page, values.size(), p -> institutionOwners(player, property, p));
+        openMenu(player, inventory, actions, "Institution als Eigentümer");
+    }
+
+    private static void areaOwners(ServerPlayerEntity player, LandProperty property, int requestedPage) {
+        LandManagementState management = LandManagementState.get(player.getServer()); List<AdministrativeArea> values = management.areas(); int page = page(requestedPage, values.size());
+        SimpleInventory inventory = new SimpleInventory(54); Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>(); int start = page * 36;
+        for (int index = start; index < Math.min(start + 36, values.size()); index++) {
+            AdministrativeArea area = values.get(index);
+            button(inventory, actions, 9 + index - start, Items.FILLED_MAP, area.name(), management.levelName(area.level()),
+                    ignored -> assignOwner(player, property, LandManagementState.AREA_OWNER_TYPE, area.id(), area.name()));
+        }
+        ownerNavigation(player, property, inventory, actions, page, values.size(), p -> areaOwners(player, property, p));
+        openMenu(player, inventory, actions, "Verwaltung als Eigentümer");
+    }
+
+    private static int page(int requested, int size) { return Math.max(0, Math.min(requested, Math.max(0, (size - 1) / 36))); }
+    private static void ownerNavigation(ServerPlayerEntity player, LandProperty property, SimpleInventory inventory,
+                                        Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions,
+                                        int page, int size, java.util.function.IntConsumer opener) {
+        button(inventory, actions, 49, Items.ARROW, "Eigentümerart", "Zurück", ignored -> openOwnerSelection(player, property));
+        if (page > 0) button(inventory, actions, 45, Items.ARROW, "Vorherige Seite", String.valueOf(page), ignored -> opener.accept(page - 1));
+        if ((page + 1) * 36 < size) button(inventory, actions, 53, Items.ARROW, "Nächste Seite", String.valueOf(page + 2), ignored -> opener.accept(page + 1));
+    }
+
     private static void assignOwner(ServerPlayerEntity player, LandProperty property, String type, String id, String label) {
         if(!AuthorityState.mayProcessLandRecords(player)){error(player,"Deine Grundbuchberechtigung ist nicht mehr gültig.");return;}
-        if (LandlordState.get(player.getServer()).update(property.withOwner(type, id))){LandAuditState.get(player.getServer()).owner(player.getUuid(),property,type,id);notifyOwnerChange(player,property,type,id);player.sendMessage(Text.literal("„" + property.name() + "“ gehört nun " + label + ".").formatted(Formatting.GREEN), false);}
+        LandlordState state = LandlordState.get(player.getServer()); LandProperty current = state.get(property.id());
+        boolean valid = current != null && id != null && !id.isBlank()
+                && (!type.equals(LandManagementState.AREA_OWNER_TYPE) || LandManagementState.get(player.getServer()).area(id) != null)
+                && (!type.equals("institution") || InstitutionState.get(player.getServer()).get(id) != null)
+                && (!type.equals("player") || approvedIdentity(player, id));
+        if (valid && state.update(current.withOwner(type, id))){LandAuditState.get(player.getServer()).owner(player.getUuid(),current,type,id);notifyOwnerChange(player,current,type,id);player.sendMessage(Text.literal("„" + current.name() + "“ gehört nun " + label + ".").formatted(Formatting.GREEN), false);}
+        else if (!valid) error(player, "Der ausgewählte Eigentümer ist nicht mehr verfügbar.");
         PropertyDrafts.cancelEdit(player.getUuid()); open(player);
     }
+    private static boolean approvedIdentity(ServerPlayerEntity player,String id){try{return IdentityState.get(player.getServer()).isApproved(UUID.fromString(id));}catch(IllegalArgumentException ignored){return false;}}
     private static void confirmDelete(ServerPlayerEntity player,LandProperty property){SimpleInventory inventory=new SimpleInventory(54);Map<Integer,Consumer<net.minecraft.entity.player.PlayerEntity>> actions=new HashMap<>();ManagementHubScreen.display(inventory,4,Items.BARRIER,"Wirklich löschen?",property.name()+" · "+property.id());ManagementHubScreen.display(inventory,20,Items.LAVA_BUCKET,"Endgültig löschen","Dieser Schritt kann nicht rückgängig gemacht werden");actions.put(20,x->{if(!AuthorityState.mayAdministerLand(player)){error(player,"Bauamtsleitung erforderlich.");return;}LandAuditState.get(player.getServer()).log(player.getUuid(),"DELETE",property,property.name());LandlordState.get(player.getServer()).remove(property.id());LandManagementState.get(player.getServer()).removePropertyData(property.id());PropertyDrafts.cancelEdit(player.getUuid());open(player);});ManagementHubScreen.display(inventory,24,Items.ARROW,"Abbrechen","Grundstück behalten");actions.put(24,x->openEditor(player));openMenu(player,inventory,actions,"Löschen bestätigen");}
     private static void notifyOwnerChange(ServerPlayerEntity actor,LandProperty old,String newType,String newId){if(old.ownerType().equals("player"))notifyPlayer(actor,old.ownerId(),"Dein Eigentum an „"+old.name()+"“ wurde übertragen.");if(newType.equals("player"))notifyPlayer(actor,newId,"Du bist nun als Eigentümer von „"+old.name()+"“ eingetragen.");}
     private static void notifyPlayer(ServerPlayerEntity actor,String uuid,String message){try{ServerPlayerEntity target=actor.getServer().getPlayerManager().getPlayer(UUID.fromString(uuid));if(target!=null){target.sendMessage(Text.literal(message).formatted(Formatting.GOLD),false);net.minecraft.item.ItemStack extract=new net.minecraft.item.ItemStack(ModItems.LAND_REGISTRY_EXTRACT);if(!target.getInventory().contains(extract))target.giveItemStack(extract);}}catch(Exception ignored){}}
     private static String ownerLabel(ServerPlayerEntity player, LandProperty property) {
         if (property.ownerType().equals("institution")) { Institution institution = InstitutionState.get(player.getServer()).get(property.ownerId()); return institution == null ? "Unbekannte Institution" : institution.name(); }
+        if (property.ownerType().equals(LandManagementState.AREA_OWNER_TYPE)) { AdministrativeArea area = LandManagementState.get(player.getServer()).area(property.ownerId()); return area == null ? ConfigManager.administration().wildernessName : area.name(); }
         try { CitizenIdentity identity = IdentityState.get(player.getServer()).get(UUID.fromString(property.ownerId())); return identity == null ? "Bürgerkonto" : identity.firstName() + " " + identity.lastName(); } catch (IllegalArgumentException ignored) { return "Unbekannt"; }
     }
 
