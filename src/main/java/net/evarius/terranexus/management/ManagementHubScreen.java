@@ -12,7 +12,6 @@ import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -44,9 +43,8 @@ public final class ManagementHubScreen {
         display(inventory, 24, Items.BRICKS, "Institutionen", "Firmen, Behörden, Vereine und Gruppen");
         actions.put(24, ignored -> InstitutionScreen.open(player));
 
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
-                (syncId, playerInventory, ignored) -> new ActionMenuScreenHandler(syncId, playerInventory, inventory, actions),
-                Text.literal(ConfigManager.general().serverDisplayName + " Verwaltung").formatted(Formatting.DARK_AQUA)));
+        CustomGuiService.open(player, inventory, actions,
+                Text.literal(ConfigManager.general().serverDisplayName + " Verwaltung").formatted(Formatting.DARK_AQUA));
     }
 
     private static boolean mayManage(ServerPlayerEntity player) {

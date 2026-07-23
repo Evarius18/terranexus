@@ -1,1 +1,0 @@
-{"type":"minecraft:block","pools":[{"bonus_rolls":0,"conditions":[{"condition":"minecraft:survives_explosion"}],"entries":[{"type":"minecraft:item","name":"terranexus:curb_drain_c250"}],"rolls":1}]}

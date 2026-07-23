@@ -12,7 +12,6 @@ import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -97,9 +96,8 @@ public final class ImmigrationScreen {
             row++;
         }
 
-        officer.openHandledScreen(new SimpleNamedScreenHandlerFactory(
-                (syncId, playerInventory, ignored) -> new ActionMenuScreenHandler(syncId, playerInventory, inventory, actions),
-                Text.literal("TerraNexus Einreisebehörde").formatted(Formatting.DARK_AQUA)));
+        CustomGuiService.open(officer, inventory, actions,
+                Text.literal("TerraNexus Einreisebehörde").formatted(Formatting.DARK_AQUA));
     }
 
     private static List<CitizenEntry> collectCitizens(ServerPlayerEntity officer, IdentityState identities) {

@@ -33,6 +33,7 @@ public final class ConfigManager {
     private static ClaimsConfig claims = new ClaimsConfig();
     private static AdministrationConfig administration = new AdministrationConfig();
     private static ShopConfig shops = new ShopConfig();
+    private static TimeClockConfig timeClock = new TimeClockConfig();
     private static ImmigrationConfig immigration = new ImmigrationConfig();
     private static DesktopConfig desktop = new DesktopConfig();
     private static PerformanceConfig performance = new PerformanceConfig();
@@ -64,6 +65,7 @@ public final class ConfigManager {
                 claims = read("claims.json", claimsDefaults, ClaimsConfig.class, ClaimsConfig::validate);
                 administration = read("administration.json", new AdministrationConfig(), AdministrationConfig.class, AdministrationConfig::validate);
                 shops = read("shops.json", new ShopConfig(), ShopConfig.class, ShopConfig::validate);
+                timeClock = read("timeclock.json", new TimeClockConfig(), TimeClockConfig.class, TimeClockConfig::validate);
                 immigration = read("immigration.json", new ImmigrationConfig(), ImmigrationConfig.class, ImmigrationConfig::validate);
                 desktop = read("desktop.json", new DesktopConfig(), DesktopConfig.class, DesktopConfig::validate);
                 performance = read("performance.json", new PerformanceConfig(), PerformanceConfig.class, PerformanceConfig::validate);
@@ -85,6 +87,7 @@ public final class ConfigManager {
     public static ClaimsConfig claims() { return claims; }
     public static AdministrationConfig administration() { return administration; }
     public static ShopConfig shops() { return shops; }
+    public static TimeClockConfig timeClock() { return timeClock; }
     public static ImmigrationConfig immigration() { return immigration; }
     public static DesktopConfig desktop() { return desktop; }
     public static PerformanceConfig performance() { return performance; }

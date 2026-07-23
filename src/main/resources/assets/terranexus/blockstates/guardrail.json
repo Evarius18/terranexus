@@ -1,1 +1,0 @@
-{"variants":{"facing=north":{"model":"terranexus:block/guardrail"},"facing=east":{"model":"terranexus:block/guardrail","y":90},"facing=south":{"model":"terranexus:block/guardrail","y":180},"facing=west":{"model":"terranexus:block/guardrail","y":270}}}

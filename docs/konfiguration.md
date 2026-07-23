@@ -84,6 +84,21 @@ Der Bauschutz, Eigentumsprüfung und individuelle Berechtigungsprüfung können 
 Ein Deaktivieren pausiert Interaktion und Neuanlage, löscht aber keine gespeicherten Shops. Eigentums-, Bestands-
 und Kontoprüfungen sind nicht konfigurierbar und bleiben immer verpflichtend.
 
+### `timeclock.json`
+
+- Stempeluhr und laufende Statusanzeige aktivieren oder pausieren;
+- Aktualisierungsintervall der Echtzeitanzeige;
+- optionales automatisches Ausstempeln beim Verlassen des Servers;
+- maximale Zahl detailliert gespeicherter Schichten je Mitarbeiter;
+- frei erweiterbare Besetzungs- und Gameplay-Regeln mit Institutionsart, Standardwert und Vergleichsoperator.
+
+`rules` ist eine nach stabilen Regel-IDs gegliederte Map. `institutionTypeKeywords` begrenzt eine Regel auf
+passende Institutionsarten; eine leere Liste gilt für alle. Unterstützte Vergleiche sind `AT_LEAST`,
+`MORE_THAN`, `AT_MOST` und `LESS_THAN`. `warnWhenUnsatisfied` steuert nur die Warnanzeige. Die Bedingung kann
+unabhängig davon über die zentrale Stempeluhr-API von späteren Simulationen abgefragt werden. Der
+institutionsspezifische Wert lässt sich durch berechtigte Mitarbeiter in der Stempeluhr ändern; er wird sicher
+in der Welt gespeichert, während die JSON-Datei den Serverstandard vorgibt.
+
 ### `administration.json`
 
 - Name und Ebenenbezeichnung der unveränderlichen Wilderness-Wurzel;

@@ -13,6 +13,8 @@ import net.evarius.terranexus.institution.InstitutionEmployee;
 import net.evarius.terranexus.institution.InstitutionPermission;
 import net.evarius.terranexus.institution.InstitutionRole;
 import net.evarius.terranexus.institution.InstitutionState;
+import net.evarius.terranexus.institution.DutyRecord;
+import net.evarius.terranexus.institution.TimeClockState;
 import net.evarius.terranexus.logging.AuditLogger;
 import net.evarius.terranexus.landlord.LandManagementState;
 import net.evarius.terranexus.landlord.LandProperty;
@@ -65,6 +67,9 @@ public final class InstitutionManagementScreen {
                 || InstitutionAccess.has(player, institutionId, InstitutionPermission.TRANSFER_OWNERSHIP))
             button(inventory, actions, 25, Items.COMPARATOR, "Institutionseinstellungen", "Eigentum und Stammdaten",
                     ignored -> settings(player, institutionId));
+        button(inventory, actions, 27, Items.CLOCK, "Stempeluhr",
+                TimeClockState.get(player.getServer()).onDutyCount(institutionId) + " Mitarbeiter im Dienst",
+                ignored -> TimeClockScreen.open(player, institutionId));
         if (InstitutionAccess.has(player, institutionId, InstitutionPermission.MANAGE_PROPERTY))
             button(inventory, actions, 29, Items.FILLED_MAP, "Grundstücke und Gebäude", "Verkaufen, vermieten und Rechte verwalten",
                     ignored -> properties(player, institutionId, 0));
@@ -115,8 +120,11 @@ public final class InstitutionManagementScreen {
         button(inventory, actions, 8, Items.ARROW, "Zurück", "Zum Institutionsdesktop", ignored -> open(player, institutionId));
         int slot = 9;
         for (InstitutionEmployee employee : employees.subList(page * pageSize, Math.min(employees.size(), (page + 1) * pageSize))) {
+            DutyRecord duty = TimeClockState.get(player.getServer())
+                    .record(institutionId, UUID.fromString(employee.playerUuid()));
             String detail = employee.institutionRole().label() + " · Eintritt " + date(employee.joinedAt())
-                    + " · Gehalt " + EconomyState.format(employee.salary());
+                    + " · Gehalt " + EconomyState.format(employee.salary())
+                    + " · " + (duty.onDuty() ? "Im Dienst" : "Außer Dienst");
             button(inventory, actions, slot++, Items.PLAYER_HEAD, citizenName(player, employee.playerUuid()), detail,
                     ignored -> employeeDetails(player, institutionId, UUID.fromString(employee.playerUuid()), page));
         }
@@ -129,11 +137,18 @@ public final class InstitutionManagementScreen {
         if (institution == null || employee == null || !InstitutionAccess.mayView(player, institutionId)) { denied(player); return; }
         SimpleInventory inventory = new SimpleInventory(54);
         Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
+        DutyRecord duty = TimeClockState.get(player.getServer()).record(institutionId, employeeId);
         ManagementHubScreen.display(inventory, 4, Items.PLAYER_HEAD, citizenName(player, employee.playerUuid()), employee.institutionRole().label());
         ManagementHubScreen.display(inventory, 13, Items.CLOCK, "Beschäftigungsdaten", "Eintritt " + date(employee.joinedAt()) + " · nächste Zahlung " + date(employee.nextPayAt()));
         ManagementHubScreen.display(inventory, 15, Items.GOLD_INGOT, "Gehalt", EconomyState.format(employee.salary()));
         ManagementHubScreen.display(inventory, 17, Items.WRITABLE_BOOK, "Personalvermerk",
                 employee.personnelNote().isBlank() ? "Kein Vermerk" : employee.personnelNote());
+        ManagementHubScreen.display(inventory, 31,
+                duty.onDuty() ? Items.LIME_CONCRETE : Items.GRAY_CONCRETE,
+                duty.onDuty() ? "Im Dienst" : "Außer Dienst",
+                duty.onDuty()
+                        ? "Seit " + date(duty.clockedInAt())
+                        : duty.lastClockOutAt() > 0 ? "Zuletzt ausgestempelt: " + date(duty.lastClockOutAt()) : "Noch keine Dienstzeit");
         if (employee.institutionRole() != InstitutionRole.OWNER
                 && InstitutionAccess.has(player, institutionId, InstitutionPermission.MANAGE_ROLES))
             button(inventory, actions, 20, Items.NAME_TAG, "Rolle ändern", "Aktuell: " + employee.institutionRole().label(),
@@ -349,7 +364,7 @@ public final class InstitutionManagementScreen {
     }
     private static void menu(ServerPlayerEntity player, SimpleInventory inventory,
                              Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions, String title) {
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, inv, ignored) -> new ActionMenuScreenHandler(id, inv, inventory, actions), Text.literal(title).formatted(Formatting.DARK_AQUA)));
+        CustomGuiService.open(player, inventory, actions, Text.literal(title).formatted(Formatting.DARK_AQUA));
     }
     private static void denied(ServerPlayerEntity player) { AuditLogger.denied(player,"institutions","management");error(player, "Keine Berechtigung für diese Institutionsfunktion."); }
     private static void error(ServerPlayerEntity player, String message) { player.sendMessage(Text.literal(message).formatted(Formatting.RED), false); }

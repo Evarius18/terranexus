@@ -10,7 +10,6 @@ import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.registry.Registries;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -63,9 +62,8 @@ public final class ShopScreen {
                         .formatted(removed ? Formatting.YELLOW : Formatting.RED), false);
             });
         }
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
-                (syncId, playerInventory, ignored) -> new ActionMenuScreenHandler(syncId, playerInventory, inventory, actions),
-                Text.literal("TerraNexus Shop").formatted(Formatting.DARK_GREEN)));
+        CustomGuiService.open(player, inventory, actions,
+                Text.literal("TerraNexus Shop").formatted(Formatting.DARK_GREEN));
     }
 
     private static void trade(ServerPlayerEntity player, ShopRecord shop, boolean buy, int amount) {

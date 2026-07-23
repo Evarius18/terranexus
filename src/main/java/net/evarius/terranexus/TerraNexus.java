@@ -12,7 +12,10 @@ import net.evarius.terranexus.landlord.LandlordProtection;
 import net.evarius.terranexus.landlord.LandlordScheduler;
 import net.evarius.terranexus.landlord.LandSurveyEvents;
 import net.evarius.terranexus.management.AdminTestCommands;
+import net.evarius.terranexus.management.CustomGuiService;
+import net.evarius.terranexus.management.CustomSearchService;
 import net.evarius.terranexus.shop.ShopService;
+import net.evarius.terranexus.institution.TimeClockService;
 import net.fabricmc.api.ModInitializer;
 
 import org.slf4j.Logger;
@@ -25,6 +28,8 @@ public class TerraNexus implements ModInitializer {
 	@Override
 	public void onInitialize() {
         ConfigManager.load();
+        CustomGuiService.register();
+        CustomSearchService.register();
         ModItemGroups.registerItemGroups();
 
         ModItems.registerModItems();
@@ -35,6 +40,7 @@ public class TerraNexus implements ModInitializer {
         EconomyCommands.register();
         LandlordProtection.register();
         ShopService.register();
+        TimeClockService.register();
         LandlordScheduler.register();
         LandSurveyEvents.register();
         AdminTestCommands.register();

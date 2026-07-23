@@ -61,7 +61,7 @@ public final class BankManagementScreen {
         int slot = 9;
         for (BankAccount account : accounts.subList(page * pageSize, Math.min(accounts.size(), (page + 1) * pageSize))) {
             String detail = (ConfigManager.desktop().showAccountNumbers ? account.accountNumber() + " · " : "") + EconomyState.format(economy.balance(account.accountKey()))
-                    + (account.frozen() ? " · GESPERRT" : "");
+                    + " · " + accountType(account.accountKey()) + " · " + (account.frozen() ? "GESPERRT" : "AKTIV");
             button(inventory, actions, slot++, account.frozen() ? Items.BARRIER : Items.PAPER,
                     label(player, account.accountKey()), detail, ignored -> details(player, account.accountKey(), query, page));
         }
@@ -135,13 +135,14 @@ public final class BankManagementScreen {
     }
 
     private static void search(ServerPlayerEntity player) {
-        input(player, "Konto suchen", value -> {
+        CustomSearchService.open(player, "Bank · Kontosuche", "RP-Name, Bürger- oder Kontonummer", "",
+                ConfigManager.bank().searchMinimumCharacters, 64, value -> {
             String query = value == null ? "" : value.trim();
             if (query.length() < ConfigManager.bank().searchMinimumCharacters) {
                 error(player, "Der Suchbegriff ist zu kurz."); open(player); return;
             }
             open(player, query, 0);
-        });
+        }, () -> open(player));
     }
 
     private static void cash(ServerPlayerEntity player, String account, boolean deposit) {
@@ -196,6 +197,12 @@ public final class BankManagementScreen {
             return identity == null ? "Unbekannter Bürger" : identity.firstName() + " " + identity.lastName() + " · " + identity.citizenNumber();
         } catch (IllegalArgumentException ignored) { return account; }
     }
+    private static String accountType(String account) {
+        if (account.startsWith("institution:")) return "INSTITUTION";
+        if (account.startsWith("area:")) return "VERWALTUNG";
+        if (account.startsWith("system:")) return "SYSTEM";
+        return "PRIVAT";
+    }
     private static String shortLabel(ServerPlayerEntity player, String account) {
         String value = label(player, account);
         return value.length() > 24 ? value.substring(0, 24) : value;
@@ -229,8 +236,7 @@ public final class BankManagementScreen {
     }
     private static void menu(ServerPlayerEntity player, SimpleInventory inventory,
                              Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions, String title) {
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, inv, ignored) ->
-                new ActionMenuScreenHandler(id, inv, inventory, actions), Text.literal(title).formatted(Formatting.GOLD)));
+        CustomGuiService.open(player, inventory, actions, Text.literal(title).formatted(Formatting.GOLD));
     }
     private static void denied(ServerPlayerEntity player) { AuditLogger.denied(player,"bank","management");error(player, "Keine Berechtigung für die Bankverwaltung."); }
     private static void error(ServerPlayerEntity player, String message) { player.sendMessage(Text.literal(message).formatted(Formatting.RED), false); }

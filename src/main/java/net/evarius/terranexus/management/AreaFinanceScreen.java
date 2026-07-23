@@ -14,7 +14,6 @@ import net.evarius.terranexus.logging.AuditLogger;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -242,7 +241,6 @@ public final class AreaFinanceScreen {
     }
     private static void menu(ServerPlayerEntity player, SimpleInventory inventory,
                              Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions, String title) {
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, inv, ignored) ->
-                new ActionMenuScreenHandler(id, inv, inventory, actions), Text.literal(title).formatted(Formatting.GOLD)));
+        CustomGuiService.open(player, inventory, actions, Text.literal(title).formatted(Formatting.GOLD));
     }
 }

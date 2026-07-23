@@ -106,7 +106,9 @@ public final class CentralBankScreen {
 
     private static void searchAccount(ServerPlayerEntity player, boolean issue) {
         if (!mayPolicy(player)) { denied(player); return; }
-        input(player, "Konto suchen", query -> accountResults(player, query.trim(), issue, 0));
+        CustomSearchService.open(player, issue ? "Zentralbank · Emissionsziel" : "Zentralbank · Einziehungsziel",
+                "RP-Name, Kontonummer oder Kontoschlüssel", "", 1, 64,
+                query -> accountResults(player, query.trim(), issue, 0), () -> open(player));
     }
 
     private static void accountResults(ServerPlayerEntity player, String query, boolean issue, int requestedPage) {
@@ -221,7 +223,6 @@ public final class CentralBankScreen {
     }
     private static void menu(ServerPlayerEntity player, SimpleInventory inventory,
                              Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions, String title) {
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, inv, ignored) ->
-                new ActionMenuScreenHandler(id, inv, inventory, actions), Text.literal(title).formatted(Formatting.GOLD)));
+        CustomGuiService.open(player, inventory, actions, Text.literal(title).formatted(Formatting.GOLD));
     }
 }

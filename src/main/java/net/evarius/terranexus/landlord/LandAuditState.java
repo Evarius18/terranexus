@@ -46,6 +46,11 @@ public class LandAuditState extends PersistentState {
         for (int index = entries.size() - 1; index >= entries.size() - maximum; index--) result.add(entries.get(index));
         return List.copyOf(result);
     }
+    public List<LandAuditEntry> allRecent() {
+        List<LandAuditEntry> result = new ArrayList<>(entries.size());
+        for (int index = entries.size() - 1; index >= 0; index--) result.add(entries.get(index));
+        return List.copyOf(result);
+    }
     public List<OwnershipChange> history(String propertyId) {
         List<OwnershipChange> result = new ArrayList<>();
         for (int index = ownership.size() - 1; index >= 0; index--) {

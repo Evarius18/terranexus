@@ -48,9 +48,8 @@ public final class InstitutionScreen {
             ManagementHubScreen.display(inventory, 49, Items.EMERALD, "Institution gründen", "Organisation mit Eigentümer und Konto anlegen");
             actions.put(49, ignored -> createStep(player, new ArrayList<>(), 0));
         }
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
-                (syncId, inv, ignored) -> new ActionMenuScreenHandler(syncId, inv, inventory, actions),
-                Text.literal("TerraNexus Institutionen").formatted(Formatting.DARK_AQUA)));
+        CustomGuiService.open(player, inventory, actions,
+                Text.literal("TerraNexus Institutionen").formatted(Formatting.DARK_AQUA));
     }
 
     private static void createStep(ServerPlayerEntity player, List<String> values, int step) {

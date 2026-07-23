@@ -65,7 +65,7 @@ public final class PropertyFinanceScreen {
     private static void input(ServerPlayerEntity player,String title,Consumer<String> done){player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id,inventory,ignored)->new TextInputScreenHandler(id,inventory,done),Text.literal(title)));}
     private static void error(ServerPlayerEntity player,String message){player.sendMessage(Text.literal(message).formatted(Formatting.RED),false);}
     private static void button(SimpleInventory inventory,Map<Integer,Consumer<net.minecraft.entity.player.PlayerEntity>> actions,int slot,net.minecraft.item.Item item,String name,String detail,Consumer<net.minecraft.entity.player.PlayerEntity> action){ManagementHubScreen.display(inventory,slot,item,name,detail);actions.put(slot,action);}
-    private static void openMenu(ServerPlayerEntity player,SimpleInventory inventory,Map<Integer,Consumer<net.minecraft.entity.player.PlayerEntity>> actions,String title){player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id,playerInventory,ignored)->new ActionMenuScreenHandler(id,playerInventory,inventory,actions),Text.literal(title).formatted(Formatting.DARK_GREEN)));}
+    private static void openMenu(ServerPlayerEntity player,SimpleInventory inventory,Map<Integer,Consumer<net.minecraft.entity.player.PlayerEntity>> actions,String title){CustomGuiService.open(player,inventory,actions,Text.literal(title).formatted(Formatting.DARK_GREEN));}
     private static void back(ServerPlayerEntity player){if(AuthorityState.mayUseLandOffice(player))PropertyScreen.open(player);else LandRegistryScreen.open(player);}
     private static void back(ServerPlayerEntity player,LandProperty property){
         if(AuthorityState.mayUseLandOffice(player)){PropertyScreen.open(player);return;}

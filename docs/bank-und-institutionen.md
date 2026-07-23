@@ -55,6 +55,26 @@ Gehälter werden aus dem Institutionskonto bezahlt. Die Periode wird über `paym
 Kontodeckung erfolgt keine Auszahlung; der Fehlversuch wird protokolliert und der Mitarbeiter sowie online
 anwesende Owner, Directors und Accountants werden informiert.
 
+## Stempeluhr und Besetzungsregeln
+
+Jeder Beschäftigte erreicht die Stempeluhr über den Institutionsdesktop und kann sich dort selbst ein- oder
+ausstempeln. Beginn, Ende, kumulierte Dienstzeit und eine begrenzte Schichthistorie werden im
+`terranexus_time_clock`-PersistentState gespeichert. Auch die je Institution berechnete Zahl der aktuell
+eingestempelten Mitarbeiter ist persistent; beim Weltstart wird sie aus den Dienstakten geprüft und bei Bedarf
+repariert. Eine Entlassung beendet eine noch laufende Schicht atomar.
+
+Owner, Directors und Manager sehen eine paginierte Dienstübersicht. Auditor, Accountant und HR besitzen
+Lesezugriff. Schwellenwerte dürfen nur Rollen mit `MANAGE_TIME_CLOCK_SETTINGS` ändern; einfache Mitarbeiter
+können ausschließlich den eigenen Status und die eigenen Zeiten bedienen. Der Hauptbildschirm aktualisiert
+Zähler und Warnung live, ohne das Menü neu öffnen zu müssen. Aktive Mitarbeiter erhalten zusätzlich eine
+konfigurierbare Actionbar-Anzeige.
+
+Die Regeln aus `config/TerraNexus/timeclock.json` sind über stabile IDs erweiterbar. Der mitgelieferte
+Feuerwehrwert kann beispielsweise mit
+`TimeClockService.ruleSatisfied(server, institutionId, "fire_spread_staffing")` von einer späteren
+Feuersimulation abgefragt werden. Institutionsspezifische Abweichungen werden im Einstellungsmenü gespeichert,
+ohne den globalen Standard zu verändern.
+
 ## TNAdmin-Testzugriff
 
 `/tnadmin test-access` vergibt zusätzlich die klar gekennzeichnete Rolle `tn_admin_test`. Nur diese

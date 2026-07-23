@@ -175,41 +175,61 @@ public final class EconomyScreen {
     }
 
     private static void recipientSearch(ServerPlayerEntity player, String source) {
-        input(player, "Empfänger suchen", value -> {
-            String query = value == null ? "" : value.trim().toLowerCase(java.util.Locale.ROOT);
-            if (query.isBlank()) { error(player, "Bitte einen Suchbegriff eingeben."); open(player); return; }
-            EconomyState economy = EconomyState.get(player.getServer());
-            for (CitizenIdentity identity : IdentityState.get(player.getServer()).allApproved())
-                economy.ensureAccount(EconomyState.playerAccount(UUID.fromString(identity.playerUuid())));
-            for (Institution institution : InstitutionState.get(player.getServer()).all())
-                economy.ensureAccount(EconomyState.institutionAccount(institution.id()));
-            BankAccount byNumber = economy.findByNumber(query);
-            if (byNumber != null && !byNumber.accountKey().equals(source)) {
-                openAmountInput(player, source, byNumber.accountKey(), BankManagementScreen.label(player, byNumber.accountKey())); return;
-            }
-            for (CitizenIdentity identity : IdentityState.get(player.getServer()).allApproved()) {
-                String name = (identity.firstName() + " " + identity.lastName()).toLowerCase(java.util.Locale.ROOT);
-                if (name.contains(query) || identity.citizenNumber().toLowerCase(java.util.Locale.ROOT).contains(query)) {
-                    String target = EconomyState.playerAccount(UUID.fromString(identity.playerUuid())); economy.ensureAccount(target);
-                    if (!target.equals(source)) { openAmountInput(player, source, target, identity.firstName() + " " + identity.lastName()); return; }
-                }
-            }
-            for (Institution institution : InstitutionState.get(player.getServer()).all()) {
-                if (institution.name().toLowerCase(java.util.Locale.ROOT).contains(query)) {
-                    String target = EconomyState.institutionAccount(institution.id()); economy.ensureAccount(target);
-                    if (!target.equals(source)) { openAmountInput(player, source, target, institution.name()); return; }
-                }
-            }
-            LandManagementState management = LandManagementState.get(player.getServer());
-            for (AdministrativeArea area : management.areas()) {
-                String label = (area.name() + " " + management.levelName(area.level())).toLowerCase(java.util.Locale.ROOT);
-                if (label.contains(query)) {
-                    String target = EconomyState.areaAccount(area.id()); economy.ensureAccount(target);
-                    if (!target.equals(source)) { openAmountInput(player, source, target, area.name()); return; }
-                }
-            }
-            error(player, "Kein Empfängerkonto gefunden."); open(player);
-        });
+        if (!canTransferFrom(player, source)) { error(player, "Keine Berechtigung für dieses Auftraggeberkonto."); open(player); return; }
+        CustomSearchService.open(player, "Bank · Empfängersuche", "RP-Name, Bürger- oder Kontonummer", "",
+                1, 64, query -> recipientResults(player, source, query, 0), () -> open(player));
+    }
+
+    private static void recipientResults(ServerPlayerEntity player, String source, String query, int requestedPage) {
+        if (!canTransferFrom(player, source)) { error(player, "Keine Berechtigung für dieses Auftraggeberkonto."); open(player); return; }
+        String needle = query.trim().toLowerCase(java.util.Locale.ROOT).replace(" ", "");
+        EconomyState economy = EconomyState.get(player.getServer());
+        List<RecipientOption> matches = new ArrayList<>();
+        for (CitizenIdentity identity : IdentityState.get(player.getServer()).allApproved()) {
+            String account = EconomyState.playerAccount(UUID.fromString(identity.playerUuid()));
+            BankAccount data = economy.ensureAccount(account);
+            String name = identity.firstName() + " " + identity.lastName();
+            if (!account.equals(source) && recipientMatches(needle, name, identity.citizenNumber(), data.accountNumber()))
+                matches.add(new RecipientOption(account, name, "Privatkonto · " + data.accountNumber()));
+        }
+        for (Institution institution : InstitutionState.get(player.getServer()).all()) {
+            String account = EconomyState.institutionAccount(institution.id());
+            BankAccount data = economy.ensureAccount(account);
+            if (!account.equals(source) && recipientMatches(needle, institution.name(), institution.id(), data.accountNumber()))
+                matches.add(new RecipientOption(account, institution.name(), "Institution · " + data.accountNumber()));
+        }
+        LandManagementState management = LandManagementState.get(player.getServer());
+        for (AdministrativeArea area : management.areas()) {
+            String account = EconomyState.areaAccount(area.id());
+            BankAccount data = economy.ensureAccount(account);
+            String type = management.levelName(area.level());
+            if (!account.equals(source) && recipientMatches(needle, area.name(), type, data.accountNumber()))
+                matches.add(new RecipientOption(account, area.name(), type + " · " + data.accountNumber()));
+        }
+        matches.sort(java.util.Comparator.comparing(RecipientOption::label));
+        int pageSize = ConfigManager.desktop().standardEntriesPerPage;
+        int pages = Math.max(1, (matches.size() + pageSize - 1) / pageSize);
+        int page = Math.max(0, Math.min(requestedPage, pages - 1));
+        SimpleInventory inventory = new SimpleInventory(54);
+        Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
+        ManagementHubScreen.display(inventory, 4, Items.COMPASS, "Empfängersuche",
+                matches.size() + " Treffer · Seite " + (page + 1) + "/" + pages + " · Suche: " + query);
+        button(inventory, actions, 8, Items.ARROW, "Zurück", "Zur Bank", ignored -> open(player));
+        if (page > 0) button(inventory, actions, 0, Items.ARROW, "Vorherige Seite", "Seite " + page,
+                ignored -> recipientResults(player, source, query, page - 1));
+        if (page + 1 < pages) button(inventory, actions, 7, Items.ARROW, "Nächste Seite", "Seite " + (page + 2),
+                ignored -> recipientResults(player, source, query, page + 1));
+        int slot = 9;
+        for (RecipientOption option : matches.subList(page * pageSize, Math.min(matches.size(), (page + 1) * pageSize)))
+            button(inventory, actions, slot++, Items.PAPER, option.label(), option.detail(),
+                    ignored -> openAmountInput(player, source, option.account(), option.label()));
+        openMenu(player, inventory, actions, "Bank · Empfängersuche");
+    }
+
+    private static boolean recipientMatches(String query, String... values) {
+        for (String value : values)
+            if (value != null && value.toLowerCase(java.util.Locale.ROOT).replace(" ", "").contains(query)) return true;
+        return false;
     }
 
     private static boolean mayViewAccount(ServerPlayerEntity player, String account) {
@@ -250,7 +270,7 @@ public final class EconomyScreen {
     }
     private static void openMenu(ServerPlayerEntity player, SimpleInventory inventory,
                                  Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions, String title) {
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, inv, ignored) -> new ActionMenuScreenHandler(id, inv, inventory, actions), Text.literal(title).formatted(Formatting.GOLD)));
+        CustomGuiService.open(player, inventory, actions, Text.literal(title).formatted(Formatting.GOLD));
     }
     private static void error(ServerPlayerEntity player, String message) { player.sendMessage(Text.literal(message).formatted(Formatting.RED), false); }
     private static void home(ServerPlayerEntity player) {
@@ -263,4 +283,5 @@ public final class EconomyScreen {
     public static void retainOnline(java.util.Set<UUID> online) { SELECTED_ACCOUNTS.keySet().retainAll(online); }
 
     private record AccountChoice(String account, String label, net.minecraft.item.Item item) {}
+    private record RecipientOption(String account, String label, String detail) { }
 }

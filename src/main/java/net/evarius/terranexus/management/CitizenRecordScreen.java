@@ -81,9 +81,8 @@ public final class CitizenRecordScreen {
         ManagementHubScreen.display(inventory, 53, Items.ARROW, "Zurück", "Zur Einreiseübersicht");
         actions.put(53, ignored -> ImmigrationScreen.open(officer, returnPage));
 
-        officer.openHandledScreen(new SimpleNamedScreenHandlerFactory(
-                (syncId, playerInventory, ignored) -> new ActionMenuScreenHandler(syncId, playerInventory, inventory, actions),
-                Text.literal("Bürgerakte bearbeiten").formatted(Formatting.DARK_AQUA)));
+        CustomGuiService.open(officer, inventory, actions,
+                Text.literal("Bürgerakte bearbeiten").formatted(Formatting.DARK_AQUA));
     }
 
     private static void addField(SimpleInventory inventory,

@@ -34,6 +34,11 @@ auf dem Server erneut geprüft. Der Entwurf wird serverseitig
 gespeichert und überlebt reguläre Serverneustarts. Nur der vermessende Mitarbeiter sieht die laufende
 Partikelkontur.
 
+Das Inventarobjekt verwendet das eigenständige Blockbench-Modell
+`assets/terranexus/models/item/land_survey_tool.json`. Die beiden Texturen liegen unter
+`assets/terranexus/textures/item/land_survey_tool/`, sodass ein späterer Blockbench-Export weder Registrierung
+noch Vermessungslogik ändern muss.
+
 Vor der Eintragung erscheint ein Bestätigungsdialog mit Name, Form und Koordinaten. Abbrechen speichert noch kein
 Grundstück und lässt die Auswahl für Korrekturen bestehen. Die Validierung erkennt zu wenige oder doppelte
 Punkte, Flächen ohne Ausdehnung, sich kreuzende Kanten und Überschneidungen mit einem konkreten bestehenden

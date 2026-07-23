@@ -7,7 +7,6 @@ import net.evarius.terranexus.institution.InstitutionPermission;
 import net.evarius.terranexus.institution.InstitutionState;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Items;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -63,8 +62,6 @@ public final class AdminDesktopScreen {
             ManagementHubScreen.display(inventory, 35, Items.MAP, "Verwaltungsfinanzen", "Gebietskonten, Personal und Gehälter");
             actions.put(35, ignored -> AreaFinanceScreen.open(player));
         }
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
-                (id, inventory1, ignored) -> new ActionMenuScreenHandler(id, inventory1, inventory, actions),
-                Text.literal(desktopName).formatted(Formatting.DARK_AQUA)));
+        CustomGuiService.open(player, inventory, actions, Text.literal(desktopName).formatted(Formatting.DARK_AQUA));
     }
 }

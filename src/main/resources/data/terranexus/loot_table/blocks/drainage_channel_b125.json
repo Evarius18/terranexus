@@ -1,1 +1,0 @@
-{"type":"minecraft:block","pools":[{"bonus_rolls":0,"conditions":[{"condition":"minecraft:survives_explosion"}],"entries":[{"type":"minecraft:item","name":"terranexus:drainage_channel_b125"}],"rolls":1}]}

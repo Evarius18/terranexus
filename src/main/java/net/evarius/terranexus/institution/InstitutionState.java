@@ -115,6 +115,7 @@ public class InstitutionState extends PersistentState {
         institutions.put(institutionId, build(institution, institution.ownerUuid(), employees));
         invalidateCaches();
         markDirty();
+        TimeClockState.get(actor.getServer()).employmentEnded(actor.getServer(), institutionId, target, System.currentTimeMillis());
         return true;
     }
 

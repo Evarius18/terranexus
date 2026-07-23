@@ -5,14 +5,14 @@ import net.minecraft.component.type.LoreComponent;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.screen.GenericContainerScreenHandler;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.evarius.terranexus.economy.EconomyState;
+import net.evarius.terranexus.management.CustomGuiService;
 
 import java.util.List;
+import java.util.Map;
 
 public final class IdentityScreen {
     private IdentityScreen() {}
@@ -33,9 +33,8 @@ public final class IdentityScreen {
         inventory.display(0, "Einreisestatus", approved ? "Freigegeben" : "In behördlicher Prüfung",
                 approved ? Items.LIME_DYE : Items.YELLOW_DYE);
 
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
-                (syncId, playerInventory, ignored) -> GenericContainerScreenHandler.createGeneric9x3(syncId, playerInventory, inventory),
-                Text.literal("TerraNexus Bürgerinformation").formatted(Formatting.DARK_AQUA)));
+        CustomGuiService.open(player, inventory, Map.of(),
+                Text.literal("TerraNexus Bürgerinformation").formatted(Formatting.DARK_AQUA));
     }
 
     private static final class ReadOnlyIdentityInventory extends SimpleInventory {

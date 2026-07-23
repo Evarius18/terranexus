@@ -318,8 +318,6 @@ public final class LandAdministrationScreen {
     private static void openMenu(ServerPlayerEntity player, SimpleInventory inventory,
                                  Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions,
                                  String title) {
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
-                (id, playerInventory, ignored) -> new ActionMenuScreenHandler(id, playerInventory, inventory, actions),
-                Text.literal(title).formatted(Formatting.DARK_GREEN)));
+        CustomGuiService.open(player, inventory, actions, Text.literal(title).formatted(Formatting.DARK_GREEN));
     }
 }

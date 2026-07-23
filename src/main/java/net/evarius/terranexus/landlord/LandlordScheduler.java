@@ -2,6 +2,7 @@ package net.evarius.terranexus.landlord;
 
 import net.evarius.terranexus.config.ConfigManager;
 import net.evarius.terranexus.institution.InstitutionState;
+import net.evarius.terranexus.institution.TimeClockService;
 import net.evarius.terranexus.management.EconomyScreen;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -22,6 +23,7 @@ public final class LandlordScheduler {
     public static void register() {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             ticks++;
+            TimeClockService.tick(server, ticks);
             var config = ConfigManager.performance();
             var players = server.getPlayerManager().getPlayerList();
             if (ticks % config.visualRefreshTicks == 0 && !players.isEmpty()) {

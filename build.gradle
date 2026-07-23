@@ -38,6 +38,24 @@ tasks.withType(JavaCompile).configureEach {
 	it.options.release = 21
 }
 
+sourceSets {
+	layoutTest {
+		java.srcDir "src/layoutTest/java"
+		compileClasspath += sourceSets.main.output + configurations.testCompileClasspath
+		runtimeClasspath += output + compileClasspath + configurations.testRuntimeClasspath
+	}
+}
+
+tasks.register("testResponsiveLayout", JavaExec) {
+	group = "verification"
+	description = "Validates the admin desktop layout at supported resolutions and GUI scales."
+	dependsOn layoutTestClasses
+	classpath = sourceSets.layoutTest.runtimeClasspath
+	mainClass = "net.evarius.terranexus.client.gui.AdminDesktopLayoutGeometryTest"
+}
+
+check.dependsOn testResponsiveLayout
+
 java {
 	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
 	// if it is present.
