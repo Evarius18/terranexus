@@ -24,13 +24,7 @@ public record LandProperty(String id, String name, String ownerType, String owne
         if (regionType.equals("chunk") || regionType.equals("cuboid"))
             return x >= minX && x <= maxX && z >= minZ && z <= maxZ;
         if (x < minX || x > maxX || z < minZ || z > maxZ || polygonPoints.size() < 3) return false;
-        boolean inside=false;
-        for(int i=0,j=polygonPoints.size()-1;i<polygonPoints.size();j=i++){
-            String[] a=polygonPoints.get(i).split(","), b=polygonPoints.get(j).split(",");
-            double xi=Double.parseDouble(a[0]),zi=Double.parseDouble(a[1]),xj=Double.parseDouble(b[0]),zj=Double.parseDouble(b[1]);
-            if(((zi>z)!=(zj>z)) && x < (xj-xi)*(z-zi)/(zj-zi)+xi) inside=!inside;
-        }
-        return inside;
+        return LandGeometry.containsMarkedBlock(polygonPoints, x, z);
     }
 
     public boolean containsColumn(String world,int x,int z){return contains(world,x,minY,z);}

@@ -55,6 +55,11 @@ public final class GuiPageModel {
                     : element.id() >= 45 ? GuiElementRole.LIST_ROW : GuiElementRole.DETAIL_INFO;
             case BANK_ACCOUNTS, AUDIT_LOG, LIST -> element.id() < 9
                     ? GuiElementRole.TOOLBAR : GuiElementRole.LIST_ROW;
+            case DOCUMENT_LIST -> element.id() < 9
+                    ? GuiElementRole.TOOLBAR : GuiElementRole.LIST_ROW;
+            case DOCUMENT_DETAIL -> element.enabled() ? GuiElementRole.ACTION : GuiElementRole.DETAIL_INFO;
+            case IDENTITY_CARD -> GuiElementRole.DETAIL_INFO;
+            case SHOP_DIALOG -> element.enabled() ? GuiElementRole.ACTION : GuiElementRole.DETAIL_INFO;
             case DETAIL -> element.enabled() ? GuiElementRole.ACTION : GuiElementRole.DETAIL_INFO;
             case HUB, ADMIN_DESKTOP -> element.enabled() ? GuiElementRole.MODULE : GuiElementRole.DETAIL_INFO;
         };

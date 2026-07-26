@@ -2,10 +2,11 @@ package net.evarius.terranexus.landlord;
 
 import net.evarius.terranexus.config.ConfigManager;
 import net.evarius.terranexus.economy.EconomyState;
-import net.evarius.terranexus.identity.AuthorityState;
 import net.evarius.terranexus.identity.IdentityState;
 import net.evarius.terranexus.institution.InstitutionAccess;
 import net.evarius.terranexus.institution.InstitutionPermission;
+import net.evarius.terranexus.item.ModItems;
+import net.evarius.terranexus.item.custom.PropertyKeyItem;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
@@ -24,7 +25,7 @@ public final class LandTradeService {
 
     public static boolean mayManageCommercially(ServerPlayerEntity player, LandProperty property) {
         if (property == null) return false;
-        if (player.hasPermissionLevel(2) || AuthorityState.mayAdministerLand(player) || property.isOwnedBy(player.getUuid())) return true;
+        if (LandPermissionService.isSystemAdministrator(player) || property.isOwnedBy(player.getUuid())) return true;
         if (property.ownerType().equals("institution"))
             return InstitutionAccess.has(player, property.ownerId(), InstitutionPermission.MANAGE_PROPERTY);
         return property.ownerType().equals(LandManagementState.AREA_OWNER_TYPE)
@@ -43,9 +44,19 @@ public final class LandTradeService {
         LandProperty property = lands.get(propertyId);
         LandLease lease = management.lease(propertyId);
         if (!mayManageCommercially(actor, property)) return Result.fail("Keine Verkaufsberechtigung.");
+        String landUse = management.landUse(propertyId);
+        if (management.isPublicLandUse(propertyId) && !ConfigManager.claims().allowPublicPropertySales)
+            return Result.fail("Der Verkauf öffentlicher Immobilien ist serverseitig deaktiviert.");
+        if (landUse.equalsIgnoreCase("Sonderimmobilie")
+                && !ConfigManager.claims().allowSpecialPropertySales)
+            return Result.fail("Der Verkauf von Sonderimmobilien ist serverseitig deaktiviert.");
+        if (property.ownerType().equals("institution")
+                && !LandTransferService.isInstitutionApprover(actor, property.ownerId()))
+            return Result.fail("Der Verkauf benötigt die Freigabe der Institutionsleitung oder einer berechtigten Führungskraft.");
         if (price <= 0 || price > ConfigManager.economy().maximumTransferAmount) return Result.fail("Ungültiger Kaufpreis.");
         if (lease != null && lease.active()) return Result.fail("Ein aktiv vermietetes Grundstück kann nicht verkauft werden.");
-        management.offerSale(new LandSaleOffer(propertyId, ownerAccount(property), price, System.currentTimeMillis()));
+        management.offerSale(new LandSaleOffer(propertyId, ownerAccount(property), price, System.currentTimeMillis(),
+                actor.getUuidAsString()));
         return Result.ok("Grundstück wurde zum Verkauf angeboten.");
     }
 
@@ -76,13 +87,15 @@ public final class LandTradeService {
                     LandProperty latest = lands.get(propertyId);
                     LandSaleOffer latestOffer = management.sale(propertyId);
                     if (latest == null || latestOffer == null || !latest.equals(property)
-                            || !latestOffer.equals(offer) || !lands.update(latest.withOwner("player", buyer.getUuidAsString()))) return false;
+                            || !latestOffer.equals(offer) || !LandTransferService.applySaleTransfer(server, buyer.getUuid(), latest, latestOffer)) return false;
                     management.cancelSale(propertyId);
                     if (lease != null && !lease.active()) management.endLease(propertyId);
                     return true;
                 });
         if (!paid) return Result.fail("Kauf abgelehnt: Kontodeckung, Kontostatus oder Grundbuchstand prüfen.");
-        LandAuditState.get(server).owner(buyer.getUuid(), property, "player", buyer.getUuidAsString());
+        LandTransferService.finishSale(server, buyer.getUuid(), property, buyer.getUuidAsString());
+        buyer.giveOrDropStack(PropertyKeyItem.create(ModItems.PROPERTY_KEY,
+                LandlordState.get(server).get(propertyId), buyer.getUuid()));
         LandAuditState.get(server).log(buyer.getUuid(), "SALE", property, EconomyState.format(offer.price()));
         notifyPlayer(server, property, "Dein Grundstück „" + property.name() + "“ wurde verkauft.");
         return Result.ok("Du hast „" + property.name() + "“ für " + EconomyState.format(offer.price()) + " gekauft.");
@@ -104,25 +117,46 @@ public final class LandTradeService {
         return Result.ok("Mietangebot wurde erstellt.");
     }
 
+    public static Result offerPublicLease(ServerPlayerEntity actor, String propertyId, long rent,
+                                          long deposit, int periodDays, int termPayments,
+                                          boolean autoRenew) {
+        LandProperty property = LandlordState.get(actor.getServer()).get(propertyId);
+        if (!mayManageCommercially(actor, property)) return Result.fail("Keine Vermietungsberechtigung.");
+        if (rent <= 0 || deposit < 0 || rent > ConfigManager.economy().maximumTransferAmount
+                || deposit > ConfigManager.economy().maximumTransferAmount || periodDays <= 0
+                || termPayments < 0 || termPayments > 10_000)
+            return Result.fail("Ungültige Vertragswerte.");
+        LandManagementState management = LandManagementState.get(actor.getServer());
+        if (management.lease(propertyId) != null)
+            return Result.fail("Für diese Immobilie besteht bereits ein Mietangebot oder Vertrag.");
+        management.setLease(LandLease.offer(propertyId, ownerAccount(property), "", rent,
+                deposit, periodDays, termPayments, autoRenew));
+        return Result.ok("Öffentliches Mietangebot wurde erstellt; Self-Check-in ist jetzt möglich.");
+    }
+
     public static Result acceptLease(ServerPlayerEntity tenant, String propertyId) {
         LandManagementState management = LandManagementState.get(tenant.getServer());
         LandLease lease = management.lease(propertyId);
         LandProperty property = LandlordState.get(tenant.getServer()).get(propertyId);
-        if (property == null || lease == null || lease.active() || !lease.tenantId().equals(tenant.getUuidAsString()))
+        if (property == null || lease == null || lease.active()
+                || !lease.publicOffer() && !lease.tenantId().equals(tenant.getUuidAsString()))
             return Result.fail("Dieses Mietangebot ist nicht mehr gültig.");
         if (!lease.landlordAccount().equals(ownerAccount(property))) return Result.fail("Der Vermieter hat sich geändert.");
         String escrow = leaseEscrowAccount(propertyId);
-        LandLease activated = lease.activate(System.currentTimeMillis(), escrow);
+        LandLease claimed = lease.publicOffer() ? lease.withTenant(tenant.getUuidAsString()) : lease;
+        LandLease activated = claimed.activate(System.currentTimeMillis(), escrow);
         if (lease.deposit() == 0) {
             management.setLease(activated);
-            return Result.ok("Mietvertrag wurde aktiviert.");
+            issueTenantKey(tenant, property);
+            return Result.ok("Mietvertrag wurde aktiviert; die konfigurierten Mieterrechte sind jetzt freigeschaltet.");
         }
         boolean paid = EconomyState.get(tenant.getServer()).transferConditional(
                 EconomyState.playerAccount(tenant.getUuid()), escrow, lease.deposit(),
                 "Mietkaution · " + property.name(), tenant.getUuidAsString(), scopeId(property), "LEASE_DEPOSIT",
                 () -> management.lease(propertyId) != null && management.lease(propertyId).equals(lease)
                         && setLeaseAndReturn(management, activated));
-        return paid ? Result.ok("Mietvertrag wurde aktiviert; die Kaution liegt auf einem Treuhandkonto.")
+        if (paid) issueTenantKey(tenant, property);
+        return paid ? Result.ok("Mietvertrag wurde aktiviert; Kaution, Mieterrechte und Wohnungsschlüssel sind eingerichtet.")
                 : Result.fail("Die Kaution konnte nicht hinterlegt werden.");
     }
 
@@ -181,7 +215,7 @@ public final class LandTradeService {
         if (lease.deposit() <= 0) {
             management.endLease(lease.propertyId());
             notify(server, tenant, "Mietverhältnis für „" + propertyName(property) + "“ wurde beendet.", Formatting.YELLOW);
-            return Result.ok("Mietverhältnis wurde beendet.");
+            return Result.ok("Mietverhältnis wurde beendet; sämtliche automatischen Mieterrechte wurden entzogen.");
         }
         String source = lease.depositAccount().isBlank() ? lease.landlordAccount() : lease.depositAccount();
         boolean refunded = EconomyState.get(server).transferConditional(source, EconomyState.playerAccount(tenant), lease.deposit(),
@@ -189,10 +223,13 @@ public final class LandTradeService {
                 () -> lease.equals(management.lease(lease.propertyId())) && removeLeaseAndReturn(management, lease.propertyId()));
         if (!refunded) return Result.fail("Mietvertrag kann nicht beendet werden, weil die Kaution nicht vollständig verfügbar ist.");
         notify(server, tenant, "Mietverhältnis beendet; Kaution zurückgezahlt: " + EconomyState.format(lease.deposit()), Formatting.YELLOW);
-        return Result.ok("Mietverhältnis beendet und Kaution zurückgezahlt.");
+        return Result.ok("Mietverhältnis beendet, Kaution zurückgezahlt und automatische Mieterrechte entzogen.");
     }
 
     private static boolean setLeaseAndReturn(LandManagementState management, LandLease lease) { management.setLease(lease); return true; }
+    private static void issueTenantKey(ServerPlayerEntity tenant, LandProperty property) {
+        tenant.giveOrDropStack(PropertyKeyItem.create(ModItems.PROPERTY_KEY, property, tenant.getUuid()));
+    }
     private static boolean removeLeaseAndReturn(LandManagementState management, String id) { management.endLease(id); return true; }
     private static String leaseEscrowAccount(String propertyId) { return "system:lease_escrow:" + propertyId; }
     private static String propertyName(LandProperty property) { return property == null ? "gelöschte Fläche" : property.name(); }

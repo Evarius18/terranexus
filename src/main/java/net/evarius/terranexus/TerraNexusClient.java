@@ -2,6 +2,7 @@ package net.evarius.terranexus;
 
 import net.evarius.terranexus.client.gui.TerraNexusMenuScreen;
 import net.evarius.terranexus.client.gui.TerraNexusSearchScreen;
+import net.evarius.terranexus.client.gui.PhoneMenuScreen;
 import net.evarius.terranexus.item.ModItems;
 import net.evarius.terranexus.network.gui.CloseGuiPayload;
 import net.evarius.terranexus.network.gui.OpenGuiPayload;
@@ -21,8 +22,12 @@ public final class TerraNexusClient implements ClientModInitializer {
                 context.client().execute(() -> {
                     if (context.client().currentScreen instanceof TerraNexusSearchScreen search)
                         search.finishFromServer();
-                    if (context.client().currentScreen instanceof TerraNexusMenuScreen screen
+                    if (context.client().currentScreen instanceof PhoneMenuScreen phone
+                            && phone.belongsTo(payload.sessionToken())) phone.update(payload);
+                    else if (context.client().currentScreen instanceof TerraNexusMenuScreen screen
                             && screen.belongsTo(payload.sessionToken())) screen.update(payload);
+                    else if (PhoneMenuScreen.applies(payload.title()))
+                        context.client().setScreen(new PhoneMenuScreen(payload));
                     else context.client().setScreen(new TerraNexusMenuScreen(payload));
                 }));
         ClientPlayNetworking.registerGlobalReceiver(OpenSearchPayload.ID, (payload, context) ->
@@ -36,6 +41,8 @@ public final class TerraNexusClient implements ClientModInitializer {
                 context.client().execute(() -> {
                     if (context.client().currentScreen instanceof TerraNexusMenuScreen screen
                             && screen.belongsTo(payload.sessionToken())) screen.closeFromServer();
+                    else if (context.client().currentScreen instanceof PhoneMenuScreen phone
+                            && phone.belongsTo(payload.sessionToken())) phone.closeFromServer();
                 }));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             boolean pressed = client.options.attackKey.isPressed();

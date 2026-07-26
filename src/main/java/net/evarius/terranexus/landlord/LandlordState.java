@@ -143,12 +143,7 @@ public class LandlordState extends PersistentState {
         PolygonShape shape = polygonCache.get(property.id());
         if (shape == null) shape = parsePolygon(property);
         if (shape == null || shape.x.length < 3) return false;
-        boolean inside = false;
-        for (int i = 0, j = shape.x.length - 1; i < shape.x.length; j = i++) {
-            int xi = shape.x[i], zi = shape.z[i], xj = shape.x[j], zj = shape.z[j];
-            if ((zi > z) != (zj > z) && x < (double) (xj - xi) * (z - zi) / (zj - zi) + xi) inside = !inside;
-        }
-        return inside;
+        return LandGeometry.containsMarkedBlock(shape.x, shape.z, shape.x.length, x, z);
     }
 
     private void rebuildIndex() {

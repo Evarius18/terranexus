@@ -1,6 +1,5 @@
 package net.evarius.terranexus.landlord;
 
-import net.evarius.terranexus.identity.AuthorityState;
 import net.evarius.terranexus.config.ConfigManager;
 import net.evarius.terranexus.institution.InstitutionState;
 import net.evarius.terranexus.logging.AuditLogger;
@@ -8,6 +7,7 @@ import net.evarius.terranexus.shop.ShopRecord;
 import net.evarius.terranexus.shop.ShopService;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
+import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.block.Block;
@@ -44,8 +44,25 @@ public final class LandlordProtection {
     private LandlordProtection() {}
 
     public static void register() {
-        PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, entity) ->
-                !(player instanceof ServerPlayerEntity serverPlayer) || check(serverPlayer, pos, LandAccess.BUILD));
+        AttackBlockCallback.EVENT.register((player, world, hand, pos, direction) -> {
+            if (world.isClient() || !(player instanceof ServerPlayerEntity serverPlayer)
+                    || !(world instanceof ServerWorld serverWorld)) return ActionResult.PASS;
+            return ContainerAccessService.handlePendingInteraction(serverPlayer, serverWorld, pos);
+        });
+        PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, entity) -> {
+            if (!(player instanceof ServerPlayerEntity serverPlayer)) return true;
+            if (world instanceof ServerWorld serverWorld && ContainerAccessService.isLocked(serverWorld, pos)
+                    && !ContainerAccessService.mayModifyLocked(serverPlayer, serverWorld, pos)) {
+                AuditLogger.denied(serverPlayer, "locked_object", "break@" + pos.toShortString());
+                serverPlayer.sendMessage(Text.literal("Du darfst dieses gesperrte Objekt nicht abbauen.")
+                        .formatted(Formatting.RED), true);
+                return false;
+            }
+            return check(serverPlayer, pos, LandAccess.BUILD);
+        });
+        PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, entity) -> {
+            if (world instanceof ServerWorld serverWorld) ContainerAccessService.removed(serverWorld, pos);
+        });
 
         UseBlockCallback.EVENT.register((player, world, hand, hit) -> {
             if (world.isClient() || !(player instanceof ServerPlayerEntity serverPlayer)) return ActionResult.PASS;
@@ -57,6 +74,12 @@ public final class LandlordProtection {
                 ShopRecord containerShop = ShopService.atContainer(serverWorld, target);
                 if (containerShop != null)
                     return ShopService.mayManage(serverPlayer, containerShop) ? ActionResult.PASS : ActionResult.FAIL;
+                ActionResult pendingResult = ContainerAccessService.handlePendingInteraction(serverPlayer, serverWorld, target);
+                if (pendingResult != ActionResult.PASS) return pendingResult;
+                if (ContainerAccessService.isLockable(serverWorld, target)
+                        && ContainerAccessService.isLocked(serverWorld, target))
+                    return checkLockedContainer(serverPlayer, serverWorld, target)
+                            ? ActionResult.PASS : ActionResult.FAIL;
             }
             if (isBlockMutatingItem(held)) {
                 if (!check(serverPlayer, target, LandAccess.BUILD)) return ActionResult.FAIL;
@@ -69,7 +92,8 @@ public final class LandlordProtection {
 
             String permission = isRedstone(world.getBlockState(target).getBlock())
                     ? LandAccess.REDSTONE
-                    : world.getBlockEntity(target) != null ? LandAccess.CONTAINERS : LandAccess.INTERACT;
+                    : world instanceof ServerWorld serverWorld && ContainerAccessService.isContainer(serverWorld, target)
+                    ? LandAccess.CONTAINERS : LandAccess.INTERACT;
             return check(serverPlayer, target, permission) ? ActionResult.PASS : ActionResult.FAIL;
         });
 
@@ -98,21 +122,21 @@ public final class LandlordProtection {
     }
 
     public static boolean isAllowed(ServerPlayerEntity player, World world, BlockPos pos, String permission) {
-        if (player.hasPermissionLevel(2) || AuthorityState.mayAdministerLand(player)) return true;
+        if (LandPermissionService.isSystemAdministrator(player)) return true;
         if (!protectionEnabled(permission)) return true;
         LandProperty property = propertyAt(world, pos);
         LandManagementState management = LandManagementState.get(player.getServer());
         LandResolution resolution = management.resolve(property);
         if (resolution.wilderness()) {
-            return management.mayManageArea(LandManagementState.ROOT_AREA_ID, player)
+            return LandPermissionService.mayExerciseAreaOwnerRights(player, LandManagementState.ROOT_AREA_ID)
                     || management.wildernessPermits(permission);
         }
         if (property.isOwnedBy(player.getUuid())) return true;
         if (resolution.ownerType().equals("institution")
                 && InstitutionState.get(player.getServer()).mayManage(resolution.ownerId(), player.getUuid())) return true;
         if (resolution.ownerType().equals(LandManagementState.AREA_OWNER_TYPE)
-                && management.mayManageArea(resolution.ownerId(), player)) return true;
-        return management.isTenant(property.id(), player.getUuid())
+                && LandPermissionService.mayExerciseAreaOwnerRights(player, resolution.ownerId())) return true;
+        return management.tenantPermits(property.id(), player.getUuid(), permission)
                 || management.access(property.id()).permits(player.getUuidAsString(), permission);
     }
 
@@ -152,6 +176,13 @@ public final class LandlordProtection {
         String targetName = property == null ? ConfigManager.administration().wildernessName : property.name();
         AuditLogger.denied(player, "claims", permission + '@' + targetId);
         player.sendMessage(Text.literal("Keine Berechtigung für „" + targetName + "“.").formatted(Formatting.RED), true);
+        return false;
+    }
+
+    private static boolean checkLockedContainer(ServerPlayerEntity player, ServerWorld world, BlockPos pos) {
+        if (ContainerAccessService.mayAccessLocked(player, world, pos)) return true;
+        AuditLogger.denied(player, "locked_object", "use@" + pos.toShortString());
+        player.sendMessage(Text.literal("Dieses Objekt ist individuell gesperrt.").formatted(Formatting.RED), true);
         return false;
     }
 

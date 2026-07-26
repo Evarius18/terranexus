@@ -96,8 +96,11 @@ public final class TimeClockScreen {
         int page = Math.max(0, Math.min(requestedPage, pages - 1));
         SimpleInventory inventory = new SimpleInventory(54);
         Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
+        long online = employees.stream().map(employee -> parse(employee.playerUuid()))
+                .filter(id -> player.getServer().getPlayerManager().getPlayer(id) != null).count();
         display(inventory, 4, Items.PLAYER_HEAD, "Dienstübersicht",
-                clock.onDutyCount(institutionId) + " im Dienst · Seite " + (page + 1) + "/" + pages);
+                clock.onDutyCount(institutionId) + " im Dienst · " + online + " online · Seite "
+                        + (page + 1) + "/" + pages);
         navigation(inventory, actions, page, pages, () -> employees(player, institutionId, page - 1),
                 () -> employees(player, institutionId, page + 1));
         button(inventory, actions, 8, Items.ARROW, "Zurück", "Zur Stempeluhr", ignored -> open(player, institutionId));
@@ -107,7 +110,9 @@ public final class TimeClockScreen {
         for (InstitutionEmployee employee : employees.subList(page * pageSize, Math.min(employees.size(), (page + 1) * pageSize))) {
             UUID id = parse(employee.playerUuid());
             DutyRecord record = clock.record(institutionId, id);
-            String detail = (record.onDuty() ? "Im Dienst seit " + dateTime(record.clockedInAt()) : "Außer Dienst · " + lastClockOut(record))
+            boolean isOnline = player.getServer().getPlayerManager().getPlayer(id) != null;
+            String detail = (isOnline ? "Online" : "Offline") + " · "
+                    + (record.onDuty() ? "Im Dienst seit " + dateTime(record.clockedInAt()) : "Außer Dienst · " + lastClockOut(record))
                     + " · " + employee.institutionRole().label();
             button(inventory, actions, slot++, record.onDuty() ? Items.LIME_CONCRETE : Items.GRAY_CONCRETE,
                     citizenName(player, employee.playerUuid()), detail,

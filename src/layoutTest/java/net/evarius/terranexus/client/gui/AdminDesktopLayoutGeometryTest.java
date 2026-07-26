@@ -25,6 +25,13 @@ public final class AdminDesktopLayoutGeometryTest {
         for (Viewport viewport : VIEWPORTS) validate(viewport);
         validateOptionalFinanceButton();
         StructuredGuiLayoutGeometryTest.run();
+        GuiDocumentLayoutTest.run();
+        net.evarius.terranexus.landlord.LandGeometryBoundaryTest.run();
+        net.evarius.terranexus.landlord.LandTransferPolicyTest.run();
+        net.evarius.terranexus.landlord.LandPersistenceTest.run();
+        net.evarius.terranexus.shop.ShopPersistenceTest.run();
+        PhoneLayoutGeometryTest.run();
+        net.evarius.terranexus.institution.InstitutionPersistenceTest.run();
     }
 
     private static void validate(Viewport viewport) {

@@ -17,12 +17,14 @@ public final class AdministrationConfig {
 
     public String privateLandUse = "Privatgrundstück";
     public List<String> landUseTypes = new ArrayList<>(List.of(
-            "Privatgrundstück", "Straße", "Weg", "Park", "Öffentlicher Platz", "Gewässer",
-            "Verwaltungsfläche", "Sonstige öffentliche Fläche"
+            "Privatgrundstück", "Wohnhaus", "Firmengebäude", "Mehrfamilienhaus",
+            "Mietwohnung", "Hotel / Pension", "Hotelzimmer", "Sonderimmobilie",
+            "Straße", "Weg", "Park", "Öffentlicher Platz", "Gewässer",
+            "Öffentliches Gebäude", "Verwaltungsfläche", "Sonstige öffentliche Fläche"
     ));
     public List<String> publicLandUseTypes = new ArrayList<>(List.of(
             "Straße", "Weg", "Park", "Öffentlicher Platz", "Gewässer",
-            "Verwaltungsfläche", "Sonstige öffentliche Fläche"
+            "Öffentliches Gebäude", "Verwaltungsfläche", "Sonstige öffentliche Fläche"
     ));
     public boolean defaultPublicInteractionAllowed = true;
     public boolean defaultPublicContainerAccess = false;

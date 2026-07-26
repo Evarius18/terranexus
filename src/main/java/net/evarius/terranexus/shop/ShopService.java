@@ -8,6 +8,7 @@ import net.evarius.terranexus.landlord.LandManagementState;
 import net.evarius.terranexus.landlord.LandProperty;
 import net.evarius.terranexus.landlord.LandTradeService;
 import net.evarius.terranexus.landlord.LandlordProtection;
+import net.evarius.terranexus.management.ShopSetupScreen;
 import net.evarius.terranexus.management.ShopScreen;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
@@ -28,7 +29,6 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 
-import java.util.Locale;
 import java.util.UUID;
 
 public final class ShopService {
@@ -55,8 +55,7 @@ public final class ShopService {
                 return ActionResult.FAIL;
             }
             if (serverWorld.getBlockEntity(pos) instanceof SignBlockEntity sign && isShopHeader(line(sign, serverPlayer, 0))) {
-                TradeResult result = registerSignShop(serverPlayer, serverWorld, pos, sign);
-                serverPlayer.sendMessage(Text.literal(result.message()).formatted(result.success() ? Formatting.GREEN : Formatting.RED), false);
+                ShopSetupScreen.begin(serverPlayer, serverWorld, pos);
                 return ActionResult.SUCCESS_SERVER;
             }
             return ActionResult.PASS;
@@ -99,6 +98,14 @@ public final class ShopService {
                 && LandManagementState.get(player.getServer()).mayManageArea(shop.ownerId(), player);
     }
 
+    public static boolean mayConfigure(ServerPlayerEntity player, ShopRecord shop) {
+        return isShopAdministrator(player) && mayManage(player, shop);
+    }
+
+    public static boolean isShopAdministrator(ServerPlayerEntity player) {
+        return player.hasPermissionLevel(2) || AuthorityState.isTnAdmin(player);
+    }
+
     public static int stock(ServerWorld world, ShopRecord shop) {
         Inventory inventory = inventory(world, shop);
         Item item = item(shop);
@@ -117,7 +124,7 @@ public final class ShopService {
         Inventory storage = inventory(world, shop);
         int amount = Math.min(requested, ConfigManager.shops().maximumItemsPerTransaction);
         if (!nearShop(customer, shop) || !ownershipCurrent(world, shop) || latest == null || !latest.equals(shop) || item == null || storage == null
-                || amount <= 0 || shop.buyPrice() <= 0 || !(world.getBlockEntity(shop.signPos()) instanceof SignBlockEntity))
+                || amount <= 0 || !shop.sellsToPlayers() || !(world.getBlockEntity(shop.signPos()) instanceof SignBlockEntity))
             return fail("Dieser Kauf ist nicht verfügbar.");
         if (shop.account().equals(EconomyState.playerAccount(customer.getUuid()))) return fail("Eigene Shops können nicht selbst handeln.");
         if (count(storage, item) < amount) return fail("Nicht genügend Lagerbestand.");
@@ -146,7 +153,7 @@ public final class ShopService {
         Inventory storage = inventory(world, shop);
         int amount = Math.min(requested, ConfigManager.shops().maximumItemsPerTransaction);
         if (!nearShop(customer, shop) || !ownershipCurrent(world, shop) || latest == null || !latest.equals(shop) || item == null || storage == null
-                || amount <= 0 || shop.sellPrice() <= 0 || !(world.getBlockEntity(shop.signPos()) instanceof SignBlockEntity))
+                || amount <= 0 || !shop.buysFromPlayers() || !(world.getBlockEntity(shop.signPos()) instanceof SignBlockEntity))
             return fail("Dieser Ankauf ist nicht verfügbar.");
         if (shop.account().equals(EconomyState.playerAccount(customer.getUuid()))) return fail("Eigene Shops können nicht selbst handeln.");
         if (count(customer.getInventory(), item) < amount) return fail("Du besitzt nicht genügend passende Items.");
@@ -171,16 +178,24 @@ public final class ShopService {
         return mayManage(player, shop) && ShopState.get(player.getServer()).remove(shop.id());
     }
 
-    private static TradeResult registerSignShop(ServerPlayerEntity player, ServerWorld world, BlockPos signPos, SignBlockEntity sign) {
-        String itemName = line(sign, player, 1).trim().toLowerCase(Locale.ROOT);
-        Identifier identifier = Identifier.tryParse(itemName);
+    public static TradeResult saveSetup(ServerPlayerEntity player, ServerWorld world, BlockPos signPos,
+                                        String itemName, long buy, long sell,
+                                        boolean salesEnabled, boolean purchasesEnabled,
+                                        ShopRecord existing) {
+        if (!ConfigManager.shops().enabled) return fail("Das Shopsystem ist deaktiviert.");
+        if (!isShopAdministrator(player))
+            return fail("Nur Administratoren dürfen Shops einrichten.");
+        if (!(world.getBlockEntity(signPos) instanceof SignBlockEntity sign)
+                || !isShopHeader(line(sign, player, 0)))
+            return fail("Das ausgewählte Schild trägt nicht mehr die Kennzeichnung [Shop].");
+        Identifier identifier = Identifier.tryParse(itemName.trim().toLowerCase(java.util.Locale.ROOT));
         if (identifier == null || !Registries.ITEM.containsId(identifier))
-            return fail("Zeile 2 muss eine gültige Item-ID enthalten, z. B. minecraft:stone.");
-        Long buy = price(line(sign, player, 2), 'k', 'b');
-        Long sell = price(line(sign, player, 3), 'v', 's');
-        if (buy == null || sell == null || buy < 0 || sell < 0 || buy == 0 && sell == 0
+            return fail("Die Item-ID ist ungültig, z. B. minecraft:stone.");
+        if (buy < 0 || sell < 0
                 || buy > ConfigManager.shops().maximumItemPrice || sell > ConfigManager.shops().maximumItemPrice)
-            return fail("Zeile 3/4: K: Preis und V: Preis; mindestens ein Preis muss positiv sein.");
+            return fail("Die Preise liegen außerhalb des zulässigen Bereichs.");
+        if (salesEnabled && buy == 0 || purchasesEnabled && sell == 0)
+            return fail("Eine aktivierte Handelsrichtung benötigt einen positiven Preis.");
         BlockPos containerPos = findSingleChest(world, signPos);
         if (containerPos == null) return fail("Direkt neben dem Schild muss eine einzelne Kiste stehen.");
         LandProperty property = LandlordProtection.propertyAt(world, signPos);
@@ -194,10 +209,20 @@ public final class ShopService {
         String ownerId = property == null ? player.getUuidAsString() : property.ownerId();
         String account = property == null ? EconomyState.playerAccount(player.getUuid()) : LandTradeService.ownerAccount(property);
         ShopState state = ShopState.get(player.getServer());
-        if (state.ownedBy(ownerType, ownerId).size() >= ConfigManager.shops().maximumShopsPerOwner)
+        if (existing == null && state.ownedBy(ownerType, ownerId).size() >= ConfigManager.shops().maximumShopsPerOwner)
             return fail("Die maximale Shopanzahl dieses Eigentümers ist erreicht.");
+        if (existing != null) {
+            ShopRecord current = state.atSign(dimension(world), signPos);
+            if (current == null || !current.id().equals(existing.id()) || !mayConfigure(player, current))
+                return fail("Der Shop darf nicht mehr bearbeitet werden.");
+            ShopRecord updated = current.withSettings(identifier.toString(), buy, sell,
+                    salesEnabled, purchasesEnabled);
+            return state.update(updated) ? ok("Die Shop-Einstellungen wurden gespeichert.")
+                    : fail("Die Shop-Einstellungen konnten nicht gespeichert werden.");
+        }
         ShopRecord record = new ShopRecord(UUID.randomUUID().toString(), dimension(world), signPos.asLong(),
-                containerPos.asLong(), identifier.toString(), buy, sell, ownerType, ownerId, account, System.currentTimeMillis());
+                containerPos.asLong(), identifier.toString(), buy, sell, salesEnabled, purchasesEnabled,
+                ownerType, ownerId, account, System.currentTimeMillis());
         return state.add(record) ? ok("Shop wurde erstellt. Kiste und Schild sind jetzt geschützt.")
                 : fail("An diesem Schild oder dieser Kiste existiert bereits ein Shop.");
     }
@@ -207,11 +232,6 @@ public final class ShopService {
         return sign.getText(front).getMessage(line, player.shouldFilterText()).getString();
     }
     private static boolean isShopHeader(String text) { return text.trim().equalsIgnoreCase("[Shop]"); }
-    private static Long price(String text, char german, char english) {
-        String value = text.trim().toLowerCase(Locale.ROOT);
-        if (value.length() < 2 || value.charAt(1) != ':' || value.charAt(0) != german && value.charAt(0) != english) return null;
-        return EconomyState.parseAmount(value.substring(2), true);
-    }
     private static BlockPos findSingleChest(ServerWorld world, BlockPos signPos) {
         for (Direction direction : Direction.values()) {
             BlockPos candidate = signPos.offset(direction);

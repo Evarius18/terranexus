@@ -17,10 +17,17 @@ public class TextInputScreenHandler extends AnvilScreenHandler {
     private String value = "";
 
     public TextInputScreenHandler(int syncId, PlayerInventory inventory, Consumer<String> onConfirm) {
+        this(syncId, inventory, "", onConfirm);
+    }
+
+    public TextInputScreenHandler(int syncId, PlayerInventory inventory, String initialValue,
+                                  Consumer<String> onConfirm) {
         super(syncId, inventory, ScreenHandlerContext.EMPTY);
         this.onConfirm = onConfirm;
+        value = initialValue == null ? "" : initialValue.trim();
         ItemStack inputItem = new ItemStack(Items.PAPER);
-        inputItem.set(DataComponentTypes.CUSTOM_NAME, Text.literal("-").formatted(Formatting.GRAY));
+        inputItem.set(DataComponentTypes.CUSTOM_NAME, Text.literal(value.isBlank() ? "-" : value)
+                .formatted(Formatting.GRAY));
         input.setStack(0, inputItem);
         updateResult();
     }

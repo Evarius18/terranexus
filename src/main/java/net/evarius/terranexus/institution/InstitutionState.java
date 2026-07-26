@@ -46,7 +46,7 @@ public class InstitutionState extends PersistentState {
         String id = UUID.randomUUID().toString();
         long now = System.currentTimeMillis();
         InstitutionEmployee ownerEmployee = new InstitutionEmployee(owner.toString(), InstitutionRole.OWNER.id(), now, 0,
-                now + payrollPeriodMillis(), "Gründer/in");
+                "Kein Gehalt", now + payrollPeriodMillis(), "Gründer/in");
         Map<String, InstitutionEmployee> employees = Map.of(owner.toString(), ownerEmployee);
         Institution institution = build(id, cleanName, type, owner.toString(), employees);
         institutions.put(id, institution);
@@ -96,8 +96,8 @@ public class InstitutionState extends PersistentState {
                 || !mayAssign(actor, institutionId, null, role)) return false;
         long now = System.currentTimeMillis();
         Map<String, InstitutionEmployee> employees = new HashMap<>(institution.employees());
-        employees.put(target.toString(), new InstitutionEmployee(target.toString(), role.id(), now, ConfigManager.salary().defaultSalary,
-                now + payrollPeriodMillis(), ""));
+        employees.put(target.toString(), new InstitutionEmployee(target.toString(), role.id(), now, defaultSalaryAmount(),
+                defaultSalaryGroup(), now + payrollPeriodMillis(), ""));
         institutions.put(institutionId, build(institution, institution.ownerUuid(), employees));
         invalidateCaches();
         markDirty();
@@ -155,6 +155,44 @@ public class InstitutionState extends PersistentState {
         return true;
     }
 
+    public boolean setSalaryGroup(ServerPlayerEntity actor, String institutionId, UUID target, String group) {
+        Long salary = ConfigManager.salary().institutionSalaryGroups.get(group);
+        Institution institution = institutions.get(institutionId);
+        InstitutionEmployee current = employee(institutionId, target);
+        if (institution == null || current == null || salary == null
+                || !InstitutionAccess.has(actor, institutionId, InstitutionPermission.MANAGE_SALARIES)) return false;
+        Map<String, InstitutionEmployee> employees = new HashMap<>(institution.employees());
+        employees.put(target.toString(), current.withSalaryGroup(group, salary));
+        institutions.put(institutionId, build(institution, institution.ownerUuid(), employees));
+        invalidateCaches();
+        markDirty();
+        return true;
+    }
+
+    public boolean removeSalary(ServerPlayerEntity actor, String institutionId, UUID target) {
+        Institution institution = institutions.get(institutionId);
+        InstitutionEmployee current = employee(institutionId, target);
+        if (institution == null || current == null
+                || !InstitutionAccess.has(actor, institutionId, InstitutionPermission.MANAGE_SALARIES)) return false;
+        Map<String, InstitutionEmployee> employees = new HashMap<>(institution.employees());
+        employees.put(target.toString(), current.withSalaryGroup("Kein Gehalt", 0L));
+        institutions.put(institutionId, build(institution, institution.ownerUuid(), employees));
+        invalidateCaches();
+        markDirty();
+        return true;
+    }
+
+    public boolean paySalaryNow(ServerPlayerEntity actor, String institutionId, UUID target) {
+        Institution institution = institutions.get(institutionId);
+        InstitutionEmployee current = employee(institutionId, target);
+        if (institution == null || current == null || current.salary() <= 0
+                || !InstitutionAccess.has(actor, institutionId, InstitutionPermission.MANAGE_SALARIES)) return false;
+        return EconomyState.get(actor.getServer()).transferConditional(
+                EconomyState.institutionAccount(institutionId), EconomyState.playerAccount(target),
+                current.salary(), "Sofortgehalt · " + institution.name(), actor.getUuidAsString(),
+                institutionId, "SALARY", () -> current.equals(employee(institutionId, target)));
+    }
+
     public boolean setPersonnelNote(ServerPlayerEntity actor, String institutionId, UUID target, String note) {
         Institution institution = institutions.get(institutionId);
         InstitutionEmployee current = employee(institutionId, target);
@@ -180,7 +218,7 @@ public class InstitutionState extends PersistentState {
         if (oldOwner != null) employees.put(institution.ownerUuid(), oldOwner.withRole(InstitutionRole.DIRECTOR));
         InstitutionEmployee incoming = employees.get(newOwner.toString());
         if (incoming == null) incoming = new InstitutionEmployee(newOwner.toString(), InstitutionRole.OWNER.id(), now, 0,
-                now + payrollPeriodMillis(), "Eigentum übernommen");
+                "Kein Gehalt", now + payrollPeriodMillis(), "Eigentum übernommen");
         else incoming = incoming.withRole(InstitutionRole.OWNER);
         employees.put(newOwner.toString(), incoming);
         institutions.put(institutionId, build(institution, newOwner.toString(), employees));
@@ -198,8 +236,8 @@ public class InstitutionState extends PersistentState {
         Map<String, InstitutionEmployee> employees = new HashMap<>(institution.employees());
         InstitutionRole parsedRole = InstitutionRole.fromId(role);
         if (!isRoleEnabled(parsedRole) || parsedRole == InstitutionRole.OWNER) parsedRole = configuredDefaultRole();
-        employees.put(player.toString(), new InstitutionEmployee(player.toString(), parsedRole.id(), now, ConfigManager.salary().defaultSalary,
-                now + payrollPeriodMillis(), ""));
+        employees.put(player.toString(), new InstitutionEmployee(player.toString(), parsedRole.id(), now, defaultSalaryAmount(),
+                defaultSalaryGroup(), now + payrollPeriodMillis(), ""));
         institutions.put(institutionId, build(institution, institution.ownerUuid(), employees));
         invalidateCaches();
         markDirty();
@@ -284,6 +322,16 @@ public class InstitutionState extends PersistentState {
         return isRoleEnabled(role) && role != InstitutionRole.OWNER ? role : InstitutionRole.EMPLOYEE;
     }
 
+    public static String defaultSalaryGroup() {
+        return ConfigManager.salary().institutionSalaryGroups.keySet().stream()
+                .findFirst().orElse("Standard");
+    }
+
+    private static long defaultSalaryAmount() {
+        return ConfigManager.salary().institutionSalaryGroups.getOrDefault(
+                defaultSalaryGroup(), ConfigManager.salary().defaultSalary);
+    }
+
     private void invalidateCaches() { allCache = null; memberCache.clear(); employeeCache.clear(); }
 
     private static Institution normalize(Institution institution) {
@@ -293,10 +341,12 @@ public class InstitutionState extends PersistentState {
             if (employees.containsKey(player)) return;
             InstitutionRole role = roles.stream().map(InstitutionRole::fromId)
                     .max(Comparator.comparingInt(InstitutionRole::level)).orElse(InstitutionRole.EMPLOYEE);
-            employees.put(player, new InstitutionEmployee(player, role.id(), fallbackJoinedAt, 0, 0, "Migrierter Datensatz"));
+            employees.put(player, new InstitutionEmployee(player, role.id(), fallbackJoinedAt, 0,
+                    "Individuell", 0, "Migrierter Datensatz"));
         });
         InstitutionEmployee owner = employees.get(institution.ownerUuid());
-        if (owner == null) owner = new InstitutionEmployee(institution.ownerUuid(), InstitutionRole.OWNER.id(), 0, 0, 0, "Migrierter Eigentümer");
+        if (owner == null) owner = new InstitutionEmployee(institution.ownerUuid(), InstitutionRole.OWNER.id(),
+                0, 0, "Individuell", 0, "Migrierter Eigentümer");
         employees.put(institution.ownerUuid(), owner.withRole(InstitutionRole.OWNER));
         return build(institution.id(), institution.name(), institution.type(), institution.ownerUuid(), employees);
     }

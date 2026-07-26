@@ -37,6 +37,17 @@ public record LandLease(String propertyId, String landlordAccount, String tenant
                 0L, 0, false, Math.max(0, termPayments), 0, autoRenew, 0L, 0L, "");
     }
 
+    public boolean publicOffer() {
+        return !active && tenantId.isBlank();
+    }
+
+    public LandLease withTenant(String newTenantId) {
+        if (active || !tenantId.isBlank() || newTenantId == null || newTenantId.isBlank()) return this;
+        return new LandLease(propertyId, landlordAccount, newTenantId, rent, deposit, periodDays,
+                nextDueAt, missedPayments, false, termPayments, paymentsCompleted, autoRenew,
+                startedAt, endsAt, depositAccount);
+    }
+
     public LandLease activate(long now, String escrowAccount) {
         long period = LandManagementState.periodMillis(periodDays);
         long end = termPayments <= 0 ? 0L : safeAdd(now, safeMultiply(period, termPayments));

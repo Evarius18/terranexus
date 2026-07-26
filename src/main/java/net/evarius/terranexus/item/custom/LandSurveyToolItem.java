@@ -1,7 +1,7 @@
 package net.evarius.terranexus.item.custom;
 
 import net.evarius.terranexus.config.ConfigManager;
-import net.evarius.terranexus.identity.AuthorityState;
+import net.evarius.terranexus.landlord.LandPermissionService;
 import net.evarius.terranexus.landlord.LandSelection;
 import net.evarius.terranexus.landlord.LandSelectionState;
 import net.evarius.terranexus.landlord.LandVisuals;
@@ -19,8 +19,8 @@ public class LandSurveyToolItem extends Item {
     public ActionResult useOnBlock(ItemUsageContext context) {
         if (context.getWorld().isClient() || !(context.getPlayer() instanceof ServerPlayerEntity player))
             return ActionResult.SUCCESS;
-        if (!AuthorityState.maySurveyLand(player)) {
-            message(player, "Keine Vermessungsberechtigung.", Formatting.RED);
+        if (!LandPermissionService.mayCreateProperty(player)) {
+            message(player, "Keine Berechtigung zum Anlegen von Grundstücken.", Formatting.RED);
             return ActionResult.FAIL;
         }
 

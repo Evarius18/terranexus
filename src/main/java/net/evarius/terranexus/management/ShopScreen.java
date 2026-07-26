@@ -39,14 +39,14 @@ public final class ShopScreen {
                 Text.literal("Betreiber: " + BankManagementScreen.label(player, shop.account())).formatted(Formatting.DARK_GRAY))));
         inventory.setStack(13, product);
 
-        if (shop.buyPrice() > 0) {
+        if (shop.sellsToPlayers()) {
             ManagementHubScreen.display(inventory, 29, Items.LIME_DYE, "1 kaufen", EconomyState.format(shop.buyPrice()));
             actions.put(29, ignored -> trade(player, shop, true, 1));
             int amount = Math.min(64, Math.max(1, ShopService.stock(player.getWorld(), shop)));
             ManagementHubScreen.display(inventory, 38, Items.EMERALD, amount + " kaufen", EconomyState.format(shop.buyPrice() * amount));
             actions.put(38, ignored -> trade(player, shop, true, amount));
         }
-        if (shop.sellPrice() > 0) {
+        if (shop.buysFromPlayers()) {
             ManagementHubScreen.display(inventory, 33, Items.ORANGE_DYE, "1 verkaufen", EconomyState.format(shop.sellPrice()));
             actions.put(33, ignored -> trade(player, shop, false, 1));
             int amount = Math.min(64, Math.max(1, ShopService.playerStock(player, shop)));
@@ -54,8 +54,13 @@ public final class ShopScreen {
             actions.put(42, ignored -> trade(player, shop, false, amount));
         }
         if (ShopService.mayManage(player, shop)) {
-            ManagementHubScreen.display(inventory, 49, Items.BARRIER, "Shop aufheben", "Kiste und Schild werden wieder freigegeben");
-            actions.put(49, ignored -> {
+            if (ShopService.mayConfigure(player, shop)) {
+                ManagementHubScreen.display(inventory, 48, Items.COMPARATOR, "Shop einrichten",
+                        "Artikel, Preise und Handelsrichtungen bearbeiten");
+                actions.put(48, ignored -> ShopSetupScreen.edit(player, shop));
+            }
+            ManagementHubScreen.display(inventory, 50, Items.BARRIER, "Shop aufheben", "Kiste und Schild werden wieder freigegeben");
+            actions.put(50, ignored -> {
                 boolean removed = ShopService.remove(player, shop);
                 player.closeHandledScreen();
                 player.sendMessage(Text.literal(removed ? "Shop wurde aufgehoben." : "Shop konnte nicht aufgehoben werden.")

@@ -6,6 +6,9 @@ import net.evarius.terranexus.item.custom.ManagementTabletItem;
 import net.evarius.terranexus.item.custom.BuildingAuthorityTabletItem;
 import net.evarius.terranexus.item.custom.LandSurveyToolItem;
 import net.evarius.terranexus.item.custom.LandRegistryExtractItem;
+import net.evarius.terranexus.item.custom.MobilePhoneItem;
+import net.evarius.terranexus.item.custom.EmployeeChipItem;
+import net.evarius.terranexus.item.custom.PropertyKeyItem;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroups;
@@ -29,6 +32,12 @@ public class ModItems {
             new Item.Settings().maxCount(1), LandSurveyToolItem::new);
     public static final Item LAND_REGISTRY_EXTRACT = registerItem("land_registry_extract",
             new Item.Settings().maxCount(1), LandRegistryExtractItem::new);
+    public static final Item MOBILE_PHONE = registerItem("mobile_phone",
+            new Item.Settings().maxCount(1), MobilePhoneItem::new);
+    public static final Item EMPLOYEE_CHIP = registerItem("employee_chip",
+            new Item.Settings().maxCount(1), EmployeeChipItem::new);
+    public static final Item PROPERTY_KEY = registerItem("property_key",
+            new Item.Settings().maxCount(1), PropertyKeyItem::new);
 
     private static Item registerItem(String name) {
         return registerItem(name, new Item.Settings(), Item::new);
@@ -52,6 +61,9 @@ public class ModItems {
             entries.add(BUILDING_AUTHORITY_TABLET);
             entries.add(LAND_SURVEY_TOOL);
             entries.add(LAND_REGISTRY_EXTRACT);
+            entries.add(MOBILE_PHONE);
+            entries.add(EMPLOYEE_CHIP);
+            entries.add(PROPERTY_KEY);
         });
     }
 }

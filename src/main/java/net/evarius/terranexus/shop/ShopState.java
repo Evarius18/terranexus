@@ -50,6 +50,17 @@ public final class ShopState extends PersistentState {
         return true;
     }
 
+    public boolean update(ShopRecord record) {
+        ShopRecord current = shops.get(record.id());
+        if (current == null
+                || !current.dimension().equals(record.dimension())
+                || current.signPosition() != record.signPosition()
+                || current.containerPosition() != record.containerPosition()) return false;
+        shops.put(record.id(), record);
+        markDirty();
+        return true;
+    }
+
     public boolean remove(String id) {
         ShopRecord removed = shops.remove(id);
         if (removed == null) return false;

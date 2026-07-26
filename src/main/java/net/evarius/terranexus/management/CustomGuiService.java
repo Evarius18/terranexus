@@ -42,7 +42,10 @@ public final class CustomGuiService {
         PayloadTypeRegistry.playC2S().register(GuiActionPayload.ID, GuiActionPayload.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(GuiActionPayload.ID,
                 (payload, context) -> handle(context.player(), payload));
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> SESSIONS.remove(handler.player.getUuid()));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            Session session = SESSIONS.remove(handler.player.getUuid());
+            runCloseHandler(session);
+        });
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             ticks++;
             for (Session session : List.copyOf(SESSIONS.values())) {
@@ -64,26 +67,33 @@ public final class CustomGuiService {
 
     public static void open(ServerPlayerEntity player, SimpleInventory inventory,
                             Map<Integer, Consumer<PlayerEntity>> actions, Text title) {
-        open(player, inventory, actions, title, null, 0);
+        open(player, inventory, actions, title, null, 0, null);
+    }
+
+    public static void openWithCloseHandler(ServerPlayerEntity player, SimpleInventory inventory,
+                                            Map<Integer, Consumer<PlayerEntity>> actions, Text title,
+                                            Runnable closeHandler) {
+        open(player, inventory, actions, title, null, 0, closeHandler);
     }
 
     public static void openLive(ServerPlayerEntity player, SimpleInventory inventory,
                                 Map<Integer, Consumer<PlayerEntity>> actions, Text title,
                                 Runnable refresh, int refreshTicks) {
-        open(player, inventory, actions, title, refresh, Math.max(1, refreshTicks));
+        open(player, inventory, actions, title, refresh, Math.max(1, refreshTicks), null);
     }
 
     private static void open(ServerPlayerEntity player, SimpleInventory inventory,
                              Map<Integer, Consumer<PlayerEntity>> actions, Text title,
-                             Runnable refresh, int refreshTicks) {
+                             Runnable refresh, int refreshTicks, Runnable closeHandler) {
         if (!ServerPlayNetworking.canSend(player, OpenGuiPayload.ID)) {
             player.sendMessage(Text.translatable("gui.terranexus.client_required").formatted(Formatting.RED), false);
             return;
         }
         String token = UUID.randomUUID().toString();
         Session session = new Session(player.getUuid(), token, inventory, Map.copyOf(actions),
-                trim(title.getString(), 160), refresh, refreshTicks, ticks + refreshTicks);
-        SESSIONS.put(player.getUuid(), session);
+                trim(title.getString(), 160), refresh, refreshTicks, ticks + refreshTicks, closeHandler);
+        Session previous = SESSIONS.put(player.getUuid(), session);
+        runCloseHandler(previous);
         send(player, session);
     }
 
@@ -96,7 +106,10 @@ public final class CustomGuiService {
             return;
         }
         if (action == GuiAction.CLOSE) {
-            if (session != null && session.token.equals(payload.sessionToken())) SESSIONS.remove(player.getUuid());
+            if (session != null && session.token.equals(payload.sessionToken())) {
+                SESSIONS.remove(player.getUuid());
+                runCloseHandler(session);
+            }
             return;
         }
         if (session == null || !session.token.equals(payload.sessionToken())) {
@@ -115,6 +128,7 @@ public final class CustomGuiService {
         catch (RuntimeException exception) {
             TerraNexus.LOGGER.error("Custom-GUI-Aktion fehlgeschlagen: Spieler={} Element={} Titel={}",
                     player.getUuidAsString(), payload.elementId(), session.title, exception);
+            runCloseHandler(session);
         }
         if (!SESSIONS.containsKey(player.getUuid())) close(player, session.token);
     }
@@ -126,7 +140,10 @@ public final class CustomGuiService {
 
     private static void close(ServerPlayerEntity player, String token) {
         Session current = SESSIONS.get(player.getUuid());
-        if (current != null && current.token.equals(token)) SESSIONS.remove(player.getUuid());
+        if (current != null && current.token.equals(token)) {
+            SESSIONS.remove(player.getUuid());
+            runCloseHandler(current);
+        }
         if (ServerPlayNetworking.canSend(player, CloseGuiPayload.ID))
             ServerPlayNetworking.send(player, new CloseGuiPayload(token));
     }
@@ -152,6 +169,15 @@ public final class CustomGuiService {
         return value.length() <= maximum ? value : value.substring(0, maximum);
     }
 
+    private static void runCloseHandler(Session session) {
+        if (session == null || session.closeHandler == null) return;
+        try { session.closeHandler.run(); }
+        catch (RuntimeException exception) {
+            TerraNexus.LOGGER.error("Custom-GUI-Schließaktion fehlgeschlagen: Spieler={} Titel={}",
+                    session.playerId, session.title, exception);
+        }
+    }
+
     private static final class Session {
         private final UUID playerId;
         private final String token;
@@ -160,11 +186,12 @@ public final class CustomGuiService {
         private final String title;
         private final Runnable refresh;
         private final int refreshTicks;
+        private final Runnable closeHandler;
         private long nextRefreshTick;
 
         private Session(UUID playerId, String token, SimpleInventory inventory,
                         Map<Integer, Consumer<PlayerEntity>> actions, String title,
-                        Runnable refresh, int refreshTicks, long nextRefreshTick) {
+                        Runnable refresh, int refreshTicks, long nextRefreshTick, Runnable closeHandler) {
             this.playerId = playerId;
             this.token = token;
             this.inventory = inventory;
@@ -173,6 +200,7 @@ public final class CustomGuiService {
             this.refresh = refresh;
             this.refreshTicks = refreshTicks;
             this.nextRefreshTick = nextRefreshTick;
+            this.closeHandler = closeHandler;
         }
     }
 }

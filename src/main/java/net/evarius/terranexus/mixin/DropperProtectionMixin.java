@@ -2,6 +2,7 @@ package net.evarius.terranexus.mixin;
 
 import net.evarius.terranexus.landlord.LandlordProtection;
 import net.evarius.terranexus.config.ConfigManager;
+import net.evarius.terranexus.landlord.ContainerAccessService;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.DispenserBlock;
 import net.minecraft.block.DropperBlock;
@@ -18,6 +19,8 @@ public abstract class DropperProtectionMixin {
     private void terranexus$preventDroppingAcrossBoundary(ServerWorld world, BlockState state,
                                                            BlockPos pos, CallbackInfo info) {
         BlockPos target = pos.offset(state.get(DispenserBlock.FACING));
-        if (ConfigManager.claims().protectAutomation && !LandlordProtection.remainsInSameProtectionArea(world, pos, target)) info.cancel();
+        if (ContainerAccessService.isLocked(world, target)
+                || ConfigManager.claims().protectAutomation && !LandlordProtection.remainsInSameProtectionArea(world, pos, target))
+            info.cancel();
     }
 }

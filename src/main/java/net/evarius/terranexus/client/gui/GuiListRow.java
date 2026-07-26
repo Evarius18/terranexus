@@ -39,12 +39,18 @@ public final class GuiListRow extends ClickableWidget {
 
     @Override
     protected void renderWidget(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
-        int background = selected ? 0xDF173A49 : hovered ? 0xD8153040
+        boolean document = pageType == GuiPageType.DOCUMENT_LIST;
+        int background = document
+                ? selected ? 0xFFE0D0A8 : hovered ? 0xFFF2E8CF
+                : (rowIndex & 1) == 0 ? 0xFFECE0C3 : 0xFFF4EAD3
+                : selected ? 0xDF173A49 : hovered ? 0xD8153040
                 : (rowIndex & 1) == 0 ? 0xB80B1B28 : 0xB80E202E;
         context.fill(getX(), getY(), getX() + width, getY() + height, background);
-        context.fill(getX(), getY() + height - 1, getX() + width, getY() + height, 0x80325462);
+        context.fill(getX(), getY() + height - 1, getX() + width, getY() + height,
+                document ? 0xFFB5A27B : 0x80325462);
         context.fill(getX(), getY(), getX() + (selected ? 3 : 1), getY() + height,
-                selected ? 0xFF3DD4E8 : 0xFF285162);
+                document ? selected ? 0xFF8A2D2D : 0xFF9B8761
+                        : selected ? 0xFF3DD4E8 : 0xFF285162);
 
         var renderer = MinecraftClient.getInstance().textRenderer;
         int iconSize = Math.max(9, Math.min(16, height - 8));
@@ -119,10 +125,13 @@ public final class GuiListRow extends ClickableWidget {
     }
 
     private void renderGenericColumns(DrawContext context, net.minecraft.client.font.TextRenderer renderer, int startX) {
+        boolean document = pageType == GuiPageType.DOCUMENT_LIST;
         int labelWidth = Math.max(28, Math.round(width * 0.40F));
-        draw(context, renderer, element.label(), startX, labelWidth - 6, 0xFFE8F2F5);
+        draw(context, renderer, element.label(), startX, labelWidth - 6,
+                document ? 0xFF2D261C : 0xFFE8F2F5);
         draw(context, renderer, GuiInfoCard.firstLine(element.tooltip()), startX + labelWidth,
-                Math.max(12, getX() + width - startX - labelWidth - 7), 0xFF91AAB2);
+                Math.max(12, getX() + width - startX - labelWidth - 7),
+                document ? 0xFF665840 : 0xFF91AAB2);
     }
 
     private void draw(DrawContext context, net.minecraft.client.font.TextRenderer renderer,

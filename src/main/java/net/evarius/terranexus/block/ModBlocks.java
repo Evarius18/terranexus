@@ -2,6 +2,7 @@ package net.evarius.terranexus.block;
 
 import net.evarius.terranexus.TerraNexus;
 import net.evarius.terranexus.block.custom.ManagementComputerBlock;
+import net.evarius.terranexus.block.custom.TimeClockTerminalBlock;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
@@ -23,6 +24,10 @@ public class ModBlocks {
     public static final Block MANAGEMENT_COMPUTER = registerBlock("management_computer",
             AbstractBlock.Settings.create().strength(2.5f, 5f).requiresTool().sounds(BlockSoundGroup.METAL).nonOpaque(),
             ManagementComputerBlock::new);
+    public static final Block TIME_CLOCK_TERMINAL = registerBlock("time_clock_terminal",
+            AbstractBlock.Settings.create().strength(2.5f, 5f).requiresTool()
+                    .sounds(BlockSoundGroup.METAL).nonOpaque(),
+            TimeClockTerminalBlock::new);
 
     // Pink Garnet Blocks
     public static Block PINK_GARNET_BLOCK = registerBlock("pink_garnet_block",
@@ -62,6 +67,7 @@ public class ModBlocks {
             entries.add(ModBlocks.PINK_GARNET_ORE);
             entries.add(ModBlocks.PINK_GARNET_DEEPSLATE_ORE);
             entries.add(MANAGEMENT_COMPUTER);
+            entries.add(TIME_CLOCK_TERMINAL);
         });
     }
 }

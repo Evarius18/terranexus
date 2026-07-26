@@ -8,6 +8,10 @@ public enum GuiPageType {
     AUDIT_LOG,
     CENTRAL_BANK,
     LAND_TOOL,
+    DOCUMENT_LIST,
+    DOCUMENT_DETAIL,
+    IDENTITY_CARD,
+    SHOP_DIALOG,
     LIST,
     DETAIL,
     HUB;
@@ -19,8 +23,13 @@ public enum GuiPageType {
         if (normalized.equals("audit-log") || normalized.contains("grundstücksprotokoll")) return AUDIT_LOG;
         if (normalized.contains("zentralbank") && normalized.contains("übersicht")) return CENTRAL_BANK;
         if (normalized.contains("terranexus grundstücke")) return LAND_TOOL;
+        if (normalized.contains("grundbuchauszug")) return DOCUMENT_LIST;
+        if (normalized.contains("grundstücksakte")) return DOCUMENT_DETAIL;
+        if (normalized.contains("bürgerinformation")) return IDENTITY_CARD;
+        if (normalized.equals("terranexus shop")) return SHOP_DIALOG;
         if (containsAny(normalized, "übersicht", "verlauf", "journal", "protokoll", "suche", "liste", "markt",
-                "eigentum", "mietverträge", "buchungen", "mitarbeiter", "bürger", "konto wählen"))
+                "eigentum", "mietverträge", "buchungen", "mitarbeiter", "bürger", "konto wählen",
+                "übertragung", "umschreibung"))
             return LIST;
         if (containsAny(normalized, "akte", "details", "bearbeiten", "einstellungen", "bestätigen", "verwaltung"))
             return DETAIL;

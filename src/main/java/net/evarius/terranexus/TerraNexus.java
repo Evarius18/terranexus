@@ -11,11 +11,15 @@ import net.evarius.terranexus.economy.EconomyCommands;
 import net.evarius.terranexus.landlord.LandlordProtection;
 import net.evarius.terranexus.landlord.LandlordScheduler;
 import net.evarius.terranexus.landlord.LandSurveyEvents;
+import net.evarius.terranexus.landlord.LandTransferService;
+import net.evarius.terranexus.landlord.ContainerAccessCommands;
+import net.evarius.terranexus.landlord.LandTransferCommands;
 import net.evarius.terranexus.management.AdminTestCommands;
 import net.evarius.terranexus.management.CustomGuiService;
 import net.evarius.terranexus.management.CustomSearchService;
 import net.evarius.terranexus.shop.ShopService;
 import net.evarius.terranexus.institution.TimeClockService;
+import net.evarius.terranexus.phone.PhoneScreen;
 import net.fabricmc.api.ModInitializer;
 
 import org.slf4j.Logger;
@@ -34,6 +38,7 @@ public class TerraNexus implements ModInitializer {
 
         ModItems.registerModItems();
         ModBlocks.registerModBlocks();
+        PhoneScreen.registerBuiltInApps();
         IdentityCommands.register();
         RoleplayNames.register();
         AuthorityCommands.register();
@@ -43,6 +48,9 @@ public class TerraNexus implements ModInitializer {
         TimeClockService.register();
         LandlordScheduler.register();
         LandSurveyEvents.register();
+        LandTransferService.register();
+        ContainerAccessCommands.register();
+        LandTransferCommands.register();
         AdminTestCommands.register();
 		LOGGER.info("Modifikation wurde initialisiert");
 	}

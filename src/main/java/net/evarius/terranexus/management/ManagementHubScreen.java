@@ -51,7 +51,7 @@ public final class ManagementHubScreen {
         return AuthorityState.mayManageIdentity(player);
     }
 
-    static void display(SimpleInventory inventory, int slot, Item item, String name, String detail) {
+    public static void display(SimpleInventory inventory, int slot, Item item, String name, String detail) {
         ItemStack stack = new ItemStack(item);
         stack.set(DataComponentTypes.CUSTOM_NAME, Text.literal(name).formatted(Formatting.AQUA));
         stack.set(DataComponentTypes.LORE, new LoreComponent(List.of(Text.literal(detail).formatted(Formatting.GRAY))));

@@ -22,6 +22,9 @@ public class ModItemGroups {
                         entries.add(ModItems.BUILDING_AUTHORITY_TABLET);
                         entries.add(ModItems.LAND_SURVEY_TOOL);
                         entries.add(ModItems.LAND_REGISTRY_EXTRACT);
+                        entries.add(ModItems.MOBILE_PHONE);
+                        entries.add(ModItems.EMPLOYEE_CHIP);
+                        entries.add(ModItems.PROPERTY_KEY);
                     }).build());
 
     public static final ItemGroup PINK_GARNET_BLOCKS_GROUP = Registry.register(Registries.ITEM_GROUP,
@@ -31,6 +34,7 @@ public class ModItemGroups {
                     .entries((displayContext, entries) -> {
                         entries.add(ModBlocks.PINK_GARNET_BLOCK);
                         entries.add(ModBlocks.RAW_PINK_GARNET_BLOCK);
+                        entries.add(ModBlocks.TIME_CLOCK_TERMINAL);
                     }).build());
 
     public static void registerItemGroups() {

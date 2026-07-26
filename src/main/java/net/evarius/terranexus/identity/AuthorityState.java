@@ -84,6 +84,12 @@ public class AuthorityState extends PersistentState {
         if (isTnAdmin(player)) return true;
         AuthorityState state=get(player.getServer());UUID id=player.getUuid();return state.has(id,LAND_REGISTRAR)||state.has(id,LAND_SURVEYOR)||state.has(id,LAND_ADMINISTRATOR);
     }
+    public static boolean mayCreateLand(ServerPlayerEntity player) {
+        if (isTnAdmin(player)) return true;
+        AuthorityState state=get(player.getServer());UUID id=player.getUuid();
+        return state.has(id,LAND_REGISTRAR)||state.has(id,LAND_SURVEYOR)
+                ||state.has(id,LAND_CLERK)||state.has(id,LAND_ADMINISTRATOR);
+    }
     public static boolean mayProcessLandRecords(ServerPlayerEntity player) {
         if (isTnAdmin(player)) return true;
         AuthorityState state=get(player.getServer());UUID id=player.getUuid();return state.has(id,LAND_REGISTRAR)||state.has(id,LAND_CLERK)||state.has(id,LAND_ADMINISTRATOR);

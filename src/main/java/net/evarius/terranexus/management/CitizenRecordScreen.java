@@ -43,7 +43,6 @@ public final class CitizenRecordScreen {
             ImmigrationScreen.open(officer, returnPage);
             return;
         }
-        ServerPlayerEntity citizen = officer.getServer().getPlayerManager().getPlayer(citizenId);
         SimpleInventory inventory = new SimpleInventory(54);
         Map<Integer, java.util.function.Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
         ManagementHubScreen.display(inventory, 4, Items.NAME_TAG, identity.firstName() + " " + identity.lastName(), identity.citizenNumber());
@@ -67,16 +66,20 @@ public final class CitizenRecordScreen {
             else state.approve(citizenId, officer.getUuid());
             open(officer, citizenId, returnPage);
         });
-        if (approved && citizen != null) {
-            ManagementHubScreen.display(inventory, 49, Items.PAPER, "Personalausweis ausstellen", "Aktuellen Ausweis an den Bürger übergeben");
+        if (approved) {
+            ManagementHubScreen.display(inventory, 49, Items.PAPER, "Personalausweis ausstellen",
+                    "Der Ausweis wird der ausstellenden Person übergeben");
             actions.put(49, ignored -> {
                 if (!AuthorityState.mayManageIdentity(officer) || !state.isApproved(citizenId)) return;
                 CitizenIdentity current = state.get(citizenId);
-                citizen.giveItemStack(CitizenIdCardItem.createCard(ModItems.CITIZEN_ID_CARD, current));
+                if (current == null) return;
+                if (!officer.giveItemStack(CitizenIdCardItem.createCard(ModItems.CITIZEN_ID_CARD, current)))
+                    officer.dropItem(CitizenIdCardItem.createCard(ModItems.CITIZEN_ID_CARD, current), false);
+                officer.sendMessage(Text.literal("Der Personalausweis für " + current.firstName() + " "
+                        + current.lastName() + " wurde dir zur persönlichen Aushändigung übergeben.")
+                        .formatted(Formatting.GREEN), false);
                 open(officer, citizenId, returnPage);
             });
-        } else if (approved) {
-            ManagementHubScreen.display(inventory, 49, Items.GRAY_DYE, "Bürger offline", "Ausweis kann derzeit nicht übergeben werden");
         }
         ManagementHubScreen.display(inventory, 53, Items.ARROW, "Zurück", "Zur Einreiseübersicht");
         actions.put(53, ignored -> ImmigrationScreen.open(officer, returnPage));

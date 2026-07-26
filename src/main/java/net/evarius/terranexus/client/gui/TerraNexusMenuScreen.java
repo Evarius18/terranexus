@@ -41,6 +41,8 @@ public final class TerraNexusMenuScreen extends Screen {
     private GuiBounds tableHeader;
     private GuiBounds detailPanel;
     private GuiActionButton detailOpenButton;
+    private GuiBounds documentPaper;
+    private GuiBounds identityCardBounds;
     private int toolbarPage;
     private String layoutIdentity = "";
 
@@ -77,6 +79,8 @@ public final class TerraNexusMenuScreen extends Screen {
         tableHeader = null;
         detailPanel = null;
         detailOpenButton = null;
+        documentPaper = null;
+        identityCardBounds = null;
         scrollableList.hide();
         scrollableGrid.hide();
         pageModel = GuiPageModel.create(title.getString(), elements);
@@ -92,6 +96,10 @@ public final class TerraNexusMenuScreen extends Screen {
             buildAdminDesktop();
             return;
         }
+        if (pageModel.type() == GuiPageType.IDENTITY_CARD) {
+            buildIdentityCard();
+            return;
+        }
 
         structuredLayout = StructuredGuiLayout.calculate(width, height);
         setCommonBounds(structuredLayout.panel(), structuredLayout.titleX(), structuredLayout.titleY(),
@@ -100,6 +108,9 @@ public final class TerraNexusMenuScreen extends Screen {
             case BANK_ACCOUNTS, AUDIT_LOG, LIST -> buildListPage();
             case CENTRAL_BANK -> buildCentralBankDashboard();
             case LAND_TOOL -> buildLandTool();
+            case DOCUMENT_LIST -> buildDocumentList();
+            case DOCUMENT_DETAIL -> buildDocumentDetail();
+            case SHOP_DIALOG -> buildShopDialog();
             case DETAIL -> buildDetailPage();
             case HUB -> buildHubPage();
             default -> { }
@@ -148,6 +159,86 @@ public final class TerraNexusMenuScreen extends Screen {
             rows.add(addDrawableChild(row));
         }
         configureDetail(split.detail());
+    }
+
+    private void buildDocumentList() {
+        documentPaper = documentBounds();
+        addHeaderSummary(false);
+        int toolbarCount = addToolbar(toolbarElements());
+        GuiBounds content = structuredLayout.content(toolbarCount);
+        int headerHeight = structuredLayout.mode() == LayoutMode.COMPACT ? 0
+                : Math.max(13, structuredLayout.scaled(TABLE_HEADER_HEIGHT));
+        tableHeader = new GuiBounds(content.x(), content.y(), content.width(), headerHeight);
+        GuiBounds viewport = new GuiBounds(content.x(), tableHeader.bottom(), content.width(),
+                Math.max(1, content.bottom() - tableHeader.bottom()));
+        List<GuiMenuElement> data = pageModel.elements(GuiElementRole.LIST_ROW);
+        ensureSelection(data);
+        scrollableList.configure(data, viewport, structuredLayout.listRowHeight());
+        for (GuiScrollableList.VisibleRow visible : scrollableList.visibleRows()) {
+            GuiListRow row = new GuiListRow(visible.element(), GuiPageType.DOCUMENT_LIST, visible.index(),
+                    visible.element().id() == selectedElementId, visible.bounds(), this::selectElement,
+                    id -> performAction(GuiAction.ACTIVATE_ELEMENT, id));
+            rows.add(addDrawableChild(row));
+        }
+    }
+
+    private void buildDocumentDetail() {
+        documentPaper = documentBounds();
+        buildDetailPage();
+    }
+
+    private void buildIdentityCard() {
+        final int designWidth = 540;
+        final int designHeight = 340;
+        int margin = 12;
+        float scale = Math.min(1.15F, Math.min((width - margin * 2) / (float) designWidth,
+                (height - margin * 2) / (float) designHeight));
+        int cardWidth = Math.max(1, Math.round(designWidth * scale));
+        int cardHeight = Math.max(1, Math.round(designHeight * scale));
+        identityCardBounds = new GuiBounds((width - cardWidth) / 2, (height - cardHeight) / 2,
+                cardWidth, cardHeight);
+        int closeSize = Math.max(12, Math.round(24 * scale));
+        addCloseButton(new GuiBounds(identityCardBounds.right() - closeSize - 6,
+                identityCardBounds.y() + 6, closeSize, closeSize));
+    }
+
+    private void buildShopDialog() {
+        int margin = 8;
+        int dialogWidth = Math.min(Math.max(300, Math.round(width * 0.72F)), 460);
+        int dialogHeight = Math.min(Math.max(190, Math.round(height * 0.64F)), 280);
+        dialogWidth = Math.min(dialogWidth, width - margin * 2);
+        dialogHeight = Math.min(dialogHeight, height - margin * 2);
+        GuiBounds panel = new GuiBounds((width - dialogWidth) / 2, (height - dialogHeight) / 2,
+                dialogWidth, dialogHeight);
+        int padding = 18;
+        setCommonBounds(panel, panel.x() + padding, panel.y() + 14,
+                panel.x() + padding, panel.bottom() - 15);
+        List<GuiMenuElement> information = pageModel.elements(GuiElementRole.DETAIL_INFO);
+        if (!information.isEmpty())
+            infoCards.add(new InfoPlacement(information.getFirst(),
+                    new GuiBounds(panel.x() + padding, panel.y() + 38,
+                            panel.width() - padding * 2, 48), true));
+        List<GuiMenuElement> actions = pageModel.elements(GuiElementRole.ACTION);
+        int columns = actions.size() >= 4 ? 2 : Math.max(1, actions.size());
+        int gap = 7;
+        int buttonWidth = (panel.width() - padding * 2 - gap * (columns - 1)) / columns;
+        int buttonHeight = 36;
+        int startY = panel.y() + 96;
+        for (int index = 0; index < actions.size(); index++) {
+            int column = index % columns;
+            int row = index / columns;
+            addActionButton(actions.get(index), new GuiBounds(panel.x() + padding + column * (buttonWidth + gap),
+                    startY + row * (buttonHeight + gap), buttonWidth, buttonHeight),
+                    Text.literal(actions.get(index).label()), GuiVisualStyle.ACTION_TILE);
+        }
+        addCloseButton(new GuiBounds(panel.right() - 28, panel.y() + 8, 20, 20));
+    }
+
+    private GuiBounds documentBounds() {
+        GuiBounds panel = structuredLayout.panel();
+        int inset = Math.max(7, structuredLayout.scaled(14));
+        return new GuiBounds(panel.x() + inset, panel.y() + inset,
+                Math.max(1, panel.width() - inset * 2), Math.max(1, panel.height() - inset * 2));
     }
 
     private void buildCentralBankDashboard() {
@@ -399,14 +490,28 @@ public final class TerraNexusMenuScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
+        if (pageModel != null && pageModel.type() == GuiPageType.IDENTITY_CARD) {
+            context.fill(0, 0, width, height, 0xA8060B10);
+            renderIdentityCard(context);
+            super.render(context, mouseX, mouseY, deltaTicks);
+            renderHoveredTooltip(context, mouseX, mouseY);
+            return;
+        }
         // Minecraft 1.21.8 already applies blur before this method; rendering it again crashes.
         context.fill(0, 0, width, height, 0x78030A12);
         GuiRenderUtil.sprite(context, ManagementGuiAtlas.BACKGROUND, panelX, panelY, panelWidth, panelHeight);
-        context.drawTextWithShadow(textRenderer, title, titleX, titleY, 0xFFE8F7FA);
-        context.drawTextWithShadow(textRenderer, Text.translatable("gui.terranexus.secure_session"),
-                statusX, statusY, 0xFF6EA1AA);
+        boolean document = pageModel != null && (pageModel.type() == GuiPageType.DOCUMENT_LIST
+                || pageModel.type() == GuiPageType.DOCUMENT_DETAIL);
+        if (documentPaper != null) renderDocumentPaper(context, documentPaper);
+        if (document) context.drawText(textRenderer, title, titleX, titleY, 0xFF2B241A, false);
+        else context.drawTextWithShadow(textRenderer, title, titleX, titleY, 0xFFE8F7FA);
+        Text status = document ? Text.literal("Amtlicher TerraNexus-Grundbuchauszug")
+                : Text.translatable("gui.terranexus.secure_session");
+        if (document) context.drawText(textRenderer, status, statusX, statusY, 0xFF6F6046, false);
+        else context.drawTextWithShadow(textRenderer, status, statusX, statusY, 0xFF6EA1AA);
         for (InfoPlacement card : infoCards)
-            GuiInfoCard.render(context, textRenderer, card.bounds(), card.element(), card.emphasized());
+            if (document) GuiInfoCard.renderDocument(context, textRenderer, card.bounds(), card.element(), card.emphasized());
+            else GuiInfoCard.render(context, textRenderer, card.bounds(), card.element(), card.emphasized());
         if (tableHeader != null) renderTableHeader(context);
         if (detailPanel != null) GuiDetailPanel.render(context, textRenderer, detailPanel,
                 selectedElement(), pageModel.type());
@@ -414,7 +519,8 @@ public final class TerraNexusMenuScreen extends Screen {
         scrollableList.renderScrollbar(context);
         scrollableGrid.renderScrollbar(context);
         if (pageModel != null && (pageModel.type() == GuiPageType.BANK_ACCOUNTS
-                || pageModel.type() == GuiPageType.AUDIT_LOG || pageModel.type() == GuiPageType.LIST)
+                || pageModel.type() == GuiPageType.AUDIT_LOG || pageModel.type() == GuiPageType.LIST
+                || pageModel.type() == GuiPageType.DOCUMENT_LIST)
                 && pageModel.elements(GuiElementRole.LIST_ROW).isEmpty() && tableHeader != null) {
             context.drawCenteredTextWithShadow(textRenderer, Text.translatable("gui.terranexus.search.empty"),
                     tableHeader.x() + tableHeader.width() / 2, tableHeader.bottom() + 12, 0xFF7898A2);
@@ -423,7 +529,9 @@ public final class TerraNexusMenuScreen extends Screen {
     }
 
     private void renderTableHeader(DrawContext context) {
-        context.fill(tableHeader.x(), tableHeader.y(), tableHeader.right(), tableHeader.bottom(), 0xD0132B38);
+        boolean document = pageModel.type() == GuiPageType.DOCUMENT_LIST;
+        context.fill(tableHeader.x(), tableHeader.y(), tableHeader.right(), tableHeader.bottom(),
+                document ? 0xFFE0D1AD : 0xD0132B38);
         if (pageModel.type() == GuiPageType.BANK_ACCOUNTS) {
             drawHeader(context, "gui.terranexus.table.name", 0.04F);
             drawHeader(context, "gui.terranexus.table.account", 0.44F);
@@ -436,15 +544,145 @@ public final class TerraNexusMenuScreen extends Screen {
             drawHeader(context, "gui.terranexus.table.category", 0.67F);
             drawHeader(context, "gui.terranexus.table.description", 0.82F);
         } else {
-            drawHeader(context, "gui.terranexus.table.entry", 0.04F);
-            drawHeader(context, "gui.terranexus.table.details", 0.44F);
+            drawHeader(context, "gui.terranexus.table.entry", 0.04F, document);
+            drawHeader(context, "gui.terranexus.table.details", 0.44F, document);
         }
     }
 
     private void drawHeader(DrawContext context, String key, float relativeX) {
+        drawHeader(context, key, relativeX, false);
+    }
+
+    private void drawHeader(DrawContext context, String key, float relativeX, boolean document) {
         context.drawText(textRenderer, Text.translatable(key),
                 tableHeader.x() + Math.round(tableHeader.width() * relativeX), tableHeader.y() + 4,
-                0xFF76AEBB, false);
+                document ? 0xFF625338 : 0xFF76AEBB, false);
+    }
+
+    private void renderDocumentPaper(DrawContext context, GuiBounds paper) {
+        context.fill(paper.x(), paper.y(), paper.right(), paper.bottom(), 0xFFF3E8CC);
+        context.fill(paper.x(), paper.y(), paper.right(), paper.y() + 2, 0xFF9B865F);
+        context.fill(paper.x(), paper.bottom() - 2, paper.right(), paper.bottom(), 0xFF9B865F);
+        context.fill(paper.x(), paper.y(), paper.x() + 2, paper.bottom(), 0xFF9B865F);
+        context.fill(paper.right() - 2, paper.y(), paper.right(), paper.bottom(), 0xFF9B865F);
+        int marginX = paper.x() + Math.max(10, paper.width() / 24);
+        context.fill(marginX, paper.y() + 8, marginX + 1, paper.bottom() - 8, 0x558A2D2D);
+        int lineStart = paper.y() + 34;
+        for (int y = lineStart; y < paper.bottom() - 12; y += 18)
+            context.fill(paper.x() + 8, y, paper.right() - 8, y + 1, 0x22806E50);
+    }
+
+    private void renderIdentityCard(DrawContext context) {
+        if (identityCardBounds == null) return;
+        final float scale = identityCardBounds.width() / 540.0F;
+        context.getMatrices().pushMatrix();
+        context.getMatrices().translate(identityCardBounds.x(), identityCardBounds.y());
+        context.getMatrices().scale(scale, scale);
+
+        // Fictional document inspired by current eID conventions, without reproducing an official document.
+        context.fill(6, 9, 534, 334, 0x55101B22);
+        context.fill(0, 5, 540, 335, 0xFFF2F1E8);
+        context.fill(5, 0, 535, 340, 0xFFF2F1E8);
+        context.fill(8, 8, 532, 332, 0xFFDAE8E2);
+        context.fill(12, 12, 528, 328, 0xFFF4F1E7);
+        context.fill(12, 12, 30, 328, 0xFF173F5B);
+        context.fill(30, 12, 528, 54, 0xFFDCEBE5);
+        renderIdentitySecurityPattern(context);
+
+        context.fill(22, 22, 30, 27, 0xFF171717);
+        context.fill(22, 27, 30, 32, 0xFFB22B32);
+        context.fill(22, 32, 30, 37, 0xFFE0B73D);
+        context.drawText(textRenderer, Text.translatable("gui.terranexus.id.country"), 40, 20, 0xFF173A50, false);
+        context.drawText(textRenderer, Text.translatable("gui.terranexus.id.document"), 40, 35, 0xFF526C73, false);
+
+        renderIdentityPortrait(context);
+        renderIdentityChip(context);
+
+        drawIdentityField(context, "gui.terranexus.id.surname", cardValue(12), 178, 72, 328);
+        drawIdentityField(context, "gui.terranexus.id.given_names", cardValue(10), 178, 110, 328);
+        drawIdentityField(context, "gui.terranexus.id.birth_date", cardValue(14), 178, 148, 116);
+        drawIdentityField(context, "gui.terranexus.id.nationality", cardValue(20), 310, 148, 100);
+        drawIdentityField(context, "gui.terranexus.id.gender", cardValue(22), 426, 148, 80);
+        drawIdentityField(context, "gui.terranexus.id.birth_place", cardValue(16), 178, 186, 328);
+        drawIdentityField(context, "gui.terranexus.id.address", cardValue(24), 29, 237, 477);
+
+        String number = cardValue(4);
+        context.drawText(textRenderer, GuiInfoCard.fit(textRenderer, Text.literal(number), 180),
+                340, 24, 0xFF183D51, false);
+        context.drawText(textRenderer, Text.literal("IDTNX"), 294, 24, 0xFF668188, false);
+        String status = GuiInfoCard.firstLine(cardValue(0));
+        context.fill(430, 52, 506, 66, status.toLowerCase(java.util.Locale.ROOT).contains("frei")
+                ? 0xFF3F775A : 0xFF9B6E2F);
+        context.drawCenteredTextWithShadow(textRenderer,
+                GuiInfoCard.fit(textRenderer, Text.literal(status), 70), 468, 55, 0xFFF7F4E9);
+
+        context.fill(22, 278, 518, 326, 0xFFE3E5DD);
+        context.fill(22, 278, 518, 280, 0xFF6C8B8B);
+        String machineLine = machineReadable(cardValue(12), cardValue(10), number);
+        context.drawText(textRenderer, Text.literal("IDTNX" + machineLine), 29, 288, 0xFF28343A, false);
+        context.drawText(textRenderer, Text.literal(machineLine + "<<<<<<<<<<"), 29, 304, 0xFF28343A, false);
+        context.getMatrices().popMatrix();
+    }
+
+    private void renderIdentitySecurityPattern(DrawContext context) {
+        for (int x = 36; x < 522; x += 16) {
+            int offset = (x / 16) % 2 == 0 ? 0 : 4;
+            context.fill(x, 60 + offset, x + 1, 271 - offset, 0x124B8B91);
+        }
+        for (int y = 64; y < 270; y += 13) {
+            context.fill(35, y, 522, y + 1, 0x0D315D69);
+            context.fill(42 + (y % 23), y + 4, 510 - (y % 19), y + 5, 0x0C73958D);
+        }
+        context.fill(463, 197, 507, 241, 0x17368B92);
+        context.fill(470, 204, 500, 234, 0x175B4B91);
+        context.drawCenteredTextWithShadow(textRenderer, Text.literal("TN"), 485, 216, 0x5573B8B3);
+        context.drawText(textRenderer, Text.literal("TERRANEXUS • TERRANEXUS • TERRANEXUS"),
+                179, 263, 0x35617D7E, false);
+    }
+
+    private void renderIdentityPortrait(DrawContext context) {
+        context.fill(37, 68, 158, 221, 0xFF8BA1A1);
+        context.fill(41, 72, 154, 217, 0xFFCAD4CF);
+        GuiRenderUtil.sprite(context, ManagementGuiAtlas.icon(GuiIcon.PERSON), 52, 91, 91, 108);
+        context.fill(41, 197, 154, 217, 0x55445758);
+        context.drawCenteredTextWithShadow(textRenderer, Text.translatable("gui.terranexus.id.photo"),
+                97, 204, 0xFFF1F4EF);
+
+        // Secondary portrait acts as a fictional holographic security element.
+        GuiRenderUtil.sprite(context, ManagementGuiAtlas.icon(GuiIcon.PERSON), 452, 82, 43, 52);
+        context.fill(448, 78, 500, 137, 0x3378C8C1);
+    }
+
+    private void renderIdentityChip(DrawContext context) {
+        context.fill(55, 229, 137, 269, 0xFFC9A84D);
+        context.fill(59, 233, 133, 265, 0xFFE3C76C);
+        context.fill(80, 233, 82, 265, 0xFF9A7D36);
+        context.fill(108, 233, 110, 265, 0xFF9A7D36);
+        context.fill(59, 248, 133, 250, 0xFF9A7D36);
+        context.fill(91, 233, 93, 248, 0xFF9A7D36);
+        context.fill(91, 250, 93, 265, 0xFF9A7D36);
+    }
+
+    private void drawIdentityField(DrawContext context, String labelKey, String value,
+                                   int x, int y, int maximumWidth) {
+        context.drawText(textRenderer, Text.translatable(labelKey), x, y, 0xFF68787A, false);
+        context.drawText(textRenderer, GuiInfoCard.fit(textRenderer, Text.literal(value), maximumWidth),
+                x, y + 12, 0xFF1D2C31, false);
+        context.fill(x, y + 25, x + maximumWidth, y + 26, 0x454D777C);
+    }
+
+    private String cardValue(int id) {
+        return elements.stream().filter(element -> element.id() == id).findFirst()
+                .map(element -> element.tooltip().isBlank() ? element.label() : element.tooltip())
+                .orElse("—");
+    }
+
+    private static String machineReadable(String surname, String givenNames, String number) {
+        String normalized = (surname + "<<" + givenNames + "<" + number).toUpperCase(java.util.Locale.ROOT)
+                .replace('Ä', 'A').replace('Ö', 'O').replace('Ü', 'U').replace('ß', 'S')
+                .replaceAll("[^A-Z0-9<]", "<");
+        return (normalized + "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+                .substring(0, 44);
     }
 
     private void renderHoveredTooltip(DrawContext context, int mouseX, int mouseY) {

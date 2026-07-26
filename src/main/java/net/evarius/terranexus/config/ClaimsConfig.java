@@ -7,6 +7,7 @@ public final class ClaimsConfig {
     public int maximumPolygonPoints = 128;
     public int maximumPropertyNameLength = 80;
     public int markerDurationSeconds = 300;
+    public int transferRequestLifetimeHours = 168;
     public int rentDayDurationMinutes = 1_440;
     public int maximumMissedRentPayments = 3;
     public boolean showPropertyEntryMessage = true;
@@ -20,6 +21,12 @@ public final class ClaimsConfig {
     public boolean protectFire = true;
     public boolean protectFarmland = true;
     public boolean preventPvpInsideClaims = false;
+    public boolean tenantInteractionAllowed = true;
+    public boolean tenantContainerAccess = true;
+    public boolean tenantRedstoneAccess = true;
+    public boolean tenantBuildingAllowed = true;
+    public boolean allowPublicPropertySales = false;
+    public boolean allowSpecialPropertySales = true;
 
     void validate() {
         defaultMinimumY = ConfigManager.clamp(defaultMinimumY, -2_032, 2_031);
@@ -27,6 +34,7 @@ public final class ClaimsConfig {
         maximumPolygonPoints = ConfigManager.clamp(maximumPolygonPoints, 3, 2_048);
         maximumPropertyNameLength = ConfigManager.clamp(maximumPropertyNameLength, 3, 128);
         markerDurationSeconds = ConfigManager.clamp(markerDurationSeconds, 10, 3_600);
+        transferRequestLifetimeHours = ConfigManager.clamp(transferRequestLifetimeHours, 1, 8_760);
         rentDayDurationMinutes = ConfigManager.clamp(rentDayDurationMinutes, 1, 525_600);
         maximumMissedRentPayments = ConfigManager.clamp(maximumMissedRentPayments, 1, 24);
     }

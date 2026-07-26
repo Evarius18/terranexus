@@ -40,7 +40,8 @@ public class LandManagementState extends PersistentState {
             Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("property_areas", Map.of()).forGetter(state -> state.propertyAreas),
             Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("addresses", Map.of()).forGetter(state -> state.addresses),
             Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("property_uses", Map.of()).forGetter(state -> state.propertyUses),
-            Codec.unboundedMap(Codec.STRING, AreaEmployment.CODEC).optionalFieldOf("area_employees", Map.of()).forGetter(state -> state.areaEmployees)
+            Codec.unboundedMap(Codec.STRING, AreaEmployment.CODEC).optionalFieldOf("area_employees", Map.of()).forGetter(state -> state.areaEmployees),
+            Codec.unboundedMap(Codec.STRING, ContainerLock.CODEC).optionalFieldOf("container_locks", Map.of()).forGetter(state -> state.containerLocks)
     ).apply(instance, LandManagementState::new));
     private static final PersistentStateType<LandManagementState> TYPE = new PersistentStateType<>(
             "terranexus_land_management", LandManagementState::new, CODEC, DataFixTypes.LEVEL);
@@ -53,19 +54,21 @@ public class LandManagementState extends PersistentState {
     private final Map<String, String> addresses;
     private final Map<String, String> propertyUses;
     private final Map<String, AreaEmployment> areaEmployees;
+    private final Map<String, ContainerLock> containerLocks;
     private List<AdministrativeArea> areaCache;
     private final Map<String, List<AdministrativeArea>> childrenCache = new HashMap<>();
     private boolean runtimeInitialized;
 
     public LandManagementState() {
         this(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(),
-                new HashMap<>(), new HashMap<>(), new HashMap<>());
+                new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
     }
 
     private LandManagementState(Map<String, LandAccess> access, Map<String, LandSaleOffer> sales,
                                 Map<String, LandLease> leases, Map<String, AdministrativeArea> areas,
                                 Map<String, String> propertyAreas, Map<String, String> addresses,
-                                Map<String, String> propertyUses, Map<String, AreaEmployment> areaEmployees) {
+                                Map<String, String> propertyUses, Map<String, AreaEmployment> areaEmployees,
+                                Map<String, ContainerLock> containerLocks) {
         this.access = new HashMap<>(access);
         this.sales = new HashMap<>(sales);
         this.leases = new HashMap<>(leases);
@@ -74,6 +77,7 @@ public class LandManagementState extends PersistentState {
         this.addresses = new HashMap<>(addresses);
         this.propertyUses = new HashMap<>(propertyUses);
         this.areaEmployees = new HashMap<>(areaEmployees);
+        this.containerLocks = new HashMap<>(containerLocks);
         migrateHierarchy();
     }
 
@@ -263,6 +267,35 @@ public class LandManagementState extends PersistentState {
         LandLease lease = leases.get(propertyId);
         return lease != null && lease.active() && lease.tenantId().equals(player.toString());
     }
+    public boolean tenantPermits(String propertyId, UUID player, String permission) {
+        if (!isTenant(propertyId, player)) return false;
+        var config = ConfigManager.claims();
+        return switch (permission) {
+            case LandAccess.INTERACT -> config.tenantInteractionAllowed;
+            case LandAccess.CONTAINERS -> config.tenantContainerAccess;
+            case LandAccess.REDSTONE -> config.tenantRedstoneAccess;
+            case LandAccess.BUILD -> config.tenantBuildingAllowed;
+            default -> false;
+        };
+    }
+    public ContainerLock containerLock(String dimension, net.minecraft.util.math.BlockPos pos) {
+        return containerLocks.get(containerKey(dimension, pos.asLong()));
+    }
+    public void setContainerLock(ContainerLock lock) {
+        containerLocks.put(containerKey(lock.dimension(), lock.position()), lock);
+        markDirty();
+    }
+    public void removeContainerLock(String dimension, net.minecraft.util.math.BlockPos pos) {
+        if (containerLocks.remove(containerKey(dimension, pos.asLong())) != null) markDirty();
+    }
+    public void removeContainerLocks(LandProperty property) {
+        if (property == null) return;
+        if (containerLocks.values().removeIf(lock -> {
+            net.minecraft.util.math.BlockPos pos = net.minecraft.util.math.BlockPos.fromLong(lock.position());
+            return lock.dimension().equals(property.dimension())
+                    && property.contains(lock.dimension(), pos.getX(), pos.getY(), pos.getZ());
+        })) markDirty();
+    }
     public String address(String propertyId) { return addresses.getOrDefault(propertyId, "Nicht eingetragen"); }
     public void setAddress(String propertyId, String address) {
         if (address.isBlank()) addresses.remove(propertyId); else addresses.put(propertyId, address);
@@ -357,6 +390,7 @@ public class LandManagementState extends PersistentState {
     }
 
     private static String areaEmployeeKey(String areaId, String playerId) { return areaId + '|' + playerId; }
+    private static String containerKey(String dimension, long position) { return dimension + '|' + position; }
     private static long salaryInterval() { return (long) ConfigManager.salary().paymentIntervalMinutes * 60_000L; }
 
     private void migrateHierarchy() {

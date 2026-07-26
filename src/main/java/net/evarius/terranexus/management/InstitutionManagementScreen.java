@@ -19,6 +19,8 @@ import net.evarius.terranexus.logging.AuditLogger;
 import net.evarius.terranexus.landlord.LandManagementState;
 import net.evarius.terranexus.landlord.LandProperty;
 import net.evarius.terranexus.landlord.LandlordState;
+import net.evarius.terranexus.item.ModItems;
+import net.evarius.terranexus.item.custom.EmployeeChipItem;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Items;
 import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
@@ -89,6 +91,8 @@ public final class InstitutionManagementScreen {
         Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
         ManagementHubScreen.display(inventory, 4, Items.FILLED_MAP, institution.name() + " · Flächen",
                 properties.size() + " Einträge · Seite " + (page + 1) + "/" + pages);
+        button(inventory, actions, 1, Items.WRITTEN_BOOK, "Vermieterübersicht", "Mietangebote und aktive Verträge",
+                ignored -> LandlordLeaseScreen.openInstitution(player, institutionId));
         if (page > 0) button(inventory, actions, 0, Items.ARROW, "Vorherige Seite", "Seite " + page,
                 ignored -> properties(player, institutionId, page - 1));
         if (page + 1 < pages) button(inventory, actions, 7, Items.ARROW, "Nächste Seite", "Seite " + (page + 2),
@@ -140,7 +144,8 @@ public final class InstitutionManagementScreen {
         DutyRecord duty = TimeClockState.get(player.getServer()).record(institutionId, employeeId);
         ManagementHubScreen.display(inventory, 4, Items.PLAYER_HEAD, citizenName(player, employee.playerUuid()), employee.institutionRole().label());
         ManagementHubScreen.display(inventory, 13, Items.CLOCK, "Beschäftigungsdaten", "Eintritt " + date(employee.joinedAt()) + " · nächste Zahlung " + date(employee.nextPayAt()));
-        ManagementHubScreen.display(inventory, 15, Items.GOLD_INGOT, "Gehalt", EconomyState.format(employee.salary()));
+        ManagementHubScreen.display(inventory, 15, Items.GOLD_INGOT, "Gehalt",
+                employee.salaryGroup() + " · " + EconomyState.format(employee.salary()));
         ManagementHubScreen.display(inventory, 17, Items.WRITABLE_BOOK, "Personalvermerk",
                 employee.personnelNote().isBlank() ? "Kein Vermerk" : employee.personnelNote());
         ManagementHubScreen.display(inventory, 31,
@@ -154,8 +159,9 @@ public final class InstitutionManagementScreen {
             button(inventory, actions, 20, Items.NAME_TAG, "Rolle ändern", "Aktuell: " + employee.institutionRole().label(),
                     ignored -> selectRole(player, institutionId, employeeId, returnPage));
         if (InstitutionAccess.has(player, institutionId, InstitutionPermission.MANAGE_SALARIES))
-            button(inventory, actions, 22, Items.GOLD_NUGGET, "Gehalt ändern", "Auszahlung je Gehaltsperiode",
-                    ignored -> salaryInput(player, institutionId, employeeId, returnPage));
+            button(inventory, actions, 22, Items.GOLD_NUGGET, "Gehalt verwalten",
+                    "Gruppe, Individualbetrag, Sofortzahlung oder Löschen",
+                    ignored -> salaryOptions(player, institutionId, employeeId, returnPage));
         if (employee.institutionRole() != InstitutionRole.OWNER
                 && InstitutionAccess.has(player, institutionId, InstitutionPermission.MANAGE_EMPLOYEES))
             button(inventory, actions, 24, Items.BARRIER, "Mitarbeiter entlassen", "Beschäftigungsverhältnis beenden", ignored -> {
@@ -168,6 +174,23 @@ public final class InstitutionManagementScreen {
                             error(player, "Vermerk ungültig oder keine Berechtigung.");
                         employeeDetails(player, institutionId, employeeId, returnPage);
                     }));
+        if (InstitutionAccess.has(player, institutionId, InstitutionPermission.MANAGE_EMPLOYEES))
+            button(inventory, actions, 28, Items.TRIPWIRE_HOOK, "Dienstausweis ausstellen",
+                    "Personalisierten Chip an die ausstellende Person ausgeben", ignored -> {
+                        CitizenIdentity identity = IdentityState.get(player.getServer()).get(employeeId);
+                        Institution latest = current(player, institutionId);
+                        if (identity == null || latest == null
+                                || latest.employees().get(employeeId.toString()) == null) {
+                            error(player, "Der Dienstausweis konnte nicht ausgestellt werden.");
+                        } else {
+                            player.giveOrDropStack(EmployeeChipItem.create(
+                                    ModItems.EMPLOYEE_CHIP, latest, identity, player));
+                            player.sendMessage(Text.literal(
+                                    "Dienstausweis wurde erstellt und kann dem Mitarbeiter übergeben werden.")
+                                    .formatted(Formatting.GREEN), false);
+                        }
+                        employeeDetails(player, institutionId, employeeId, returnPage);
+                    });
         button(inventory, actions, 8, Items.ARROW, "Zurück", "Zur Mitarbeiterliste", ignored -> employees(player, institutionId, returnPage));
         menu(player, inventory, actions, "Institution · Personalakte");
     }
@@ -220,6 +243,52 @@ public final class InstitutionManagementScreen {
         });
     }
 
+    private static void salaryOptions(ServerPlayerEntity player, String institutionId,
+                                      UUID employeeId, int returnPage) {
+        InstitutionEmployee employee = InstitutionState.get(player.getServer()).employee(institutionId, employeeId);
+        if (employee == null || !InstitutionAccess.has(player, institutionId,
+                InstitutionPermission.MANAGE_SALARIES)) { denied(player); return; }
+        SimpleInventory inventory = new SimpleInventory(54);
+        Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
+        ManagementHubScreen.display(inventory, 4, Items.GOLD_INGOT,
+                citizenName(player, employee.playerUuid()),
+                employee.salaryGroup() + " · " + EconomyState.format(employee.salary()));
+        int slot = 10;
+        for (Map.Entry<String, Long> group : ConfigManager.salary().institutionSalaryGroups.entrySet()) {
+            int targetSlot = slot++;
+            button(inventory, actions, targetSlot, Items.NAME_TAG, group.getKey(),
+                    EconomyState.format(group.getValue()), ignored -> {
+                        if (!InstitutionState.get(player.getServer()).setSalaryGroup(
+                                player, institutionId, employeeId, group.getKey()))
+                            error(player, "Gehaltsgruppe konnte nicht übernommen werden.");
+                        salaryOptions(player, institutionId, employeeId, returnPage);
+                    });
+            if (slot >= 18) break;
+        }
+        button(inventory, actions, 29, Items.WRITABLE_BOOK, "Individueller Betrag",
+                "Eigene Gehaltshöhe festlegen",
+                ignored -> salaryInput(player, institutionId, employeeId, returnPage));
+        button(inventory, actions, 31, Items.EMERALD, "Jetzt auszahlen",
+                "Einmalige sofortige Gehaltszahlung ausführen", ignored -> {
+                    boolean paid = InstitutionState.get(player.getServer())
+                            .paySalaryNow(player, institutionId, employeeId);
+                    player.sendMessage(Text.literal(paid ? "Sofortgehalt wurde ausgezahlt."
+                                    : "Sofortzahlung abgelehnt: Gehalt, Deckung oder Berechtigung prüfen.")
+                            .formatted(paid ? Formatting.GREEN : Formatting.RED), false);
+                    salaryOptions(player, institutionId, employeeId, returnPage);
+                });
+        button(inventory, actions, 33, Items.BARRIER, "Gehalt löschen",
+                "Gehaltsplan auf 0 setzen", ignored -> {
+                    if (!InstitutionState.get(player.getServer())
+                            .removeSalary(player, institutionId, employeeId))
+                        error(player, "Gehalt konnte nicht gelöscht werden.");
+                    salaryOptions(player, institutionId, employeeId, returnPage);
+                });
+        button(inventory, actions, 8, Items.ARROW, "Zurück", "Zur Personalakte",
+                ignored -> employeeDetails(player, institutionId, employeeId, returnPage));
+        menu(player, inventory, actions, "Institution · Gehaltsplan");
+    }
+
     private static void payroll(ServerPlayerEntity player, String institutionId, int requestedPage) {
         if (!InstitutionAccess.has(player, institutionId, InstitutionPermission.VIEW_FINANCES)) { denied(player); return; }
         List<InstitutionEmployee> entries = InstitutionState.get(player.getServer()).employees(institutionId);
@@ -236,10 +305,11 @@ public final class InstitutionManagementScreen {
         button(inventory, actions, 8, Items.ARROW, "Zurück", "Zum Institutionsdesktop", ignored -> open(player, institutionId));
         int slot = 9;
         for (InstitutionEmployee employee : entries.subList(page * pageSize, Math.min(entries.size(), (page + 1) * pageSize))) {
-            String detail = EconomyState.format(employee.salary()) + " · nächste Zahlung " + date(employee.nextPayAt());
+            String detail = employee.salaryGroup() + " · " + EconomyState.format(employee.salary())
+                    + " · nächste Zahlung " + date(employee.nextPayAt());
             if (InstitutionAccess.has(player, institutionId, InstitutionPermission.MANAGE_SALARIES))
                 button(inventory, actions, slot++, Items.GOLD_NUGGET, citizenName(player, employee.playerUuid()), detail,
-                        ignored -> salaryInput(player, institutionId, UUID.fromString(employee.playerUuid()), page));
+                        ignored -> salaryOptions(player, institutionId, UUID.fromString(employee.playerUuid()), page));
             else ManagementHubScreen.display(inventory, slot++, Items.GOLD_NUGGET, citizenName(player, employee.playerUuid()), detail);
         }
         menu(player, inventory, actions, "Institution · Gehälter");

@@ -10,4 +10,38 @@ public final class LandGeometry {
     public static String validateCuboid(BlockPos a,BlockPos b){if(a.getX()==b.getX()||a.getZ()==b.getZ())return "Ein Grundstück benötigt Breite und Länge; die Punkte dürfen nicht auf derselben Achse liegen.";return null;}
     private static boolean intersects(BlockPos a,BlockPos b,BlockPos c,BlockPos d){long o1=orientation(a,b,c),o2=orientation(a,b,d),o3=orientation(c,d,a),o4=orientation(c,d,b);return ((o1>0&&o2<0)||(o1<0&&o2>0))&&((o3>0&&o4<0)||(o3<0&&o4>0));}
     private static long orientation(BlockPos a,BlockPos b,BlockPos c){return (long)(b.getZ()-a.getZ())*(c.getX()-b.getX())-(long)(b.getX()-a.getX())*(c.getZ()-b.getZ());}
+
+    public static boolean containsMarkedBlock(List<String> encodedPoints, int blockX, int blockZ) {
+        int[] x = new int[encodedPoints.size()];
+        int[] z = new int[encodedPoints.size()];
+        int count = 0;
+        for (String encoded : encodedPoints) {
+            int separator = encoded.indexOf(',');
+            if (separator < 1) continue;
+            try {
+                x[count] = Integer.parseInt(encoded.substring(0, separator));
+                z[count] = Integer.parseInt(encoded.substring(separator + 1));
+                count++;
+            } catch (NumberFormatException ignored) {}
+        }
+        return containsMarkedBlock(x, z, count, blockX, blockZ);
+    }
+
+    static boolean containsMarkedBlock(int[] x, int[] z, int count, int blockX, int blockZ) {
+        if (count < 3) return false;
+        boolean inside = false;
+        for (int i = 0, j = count - 1; i < count; j = i++) {
+            int xi = x[i], zi = z[i], xj = x[j], zj = z[j];
+            if (onSegment(xj, zj, xi, zi, blockX, blockZ)) return true;
+            if ((zi > blockZ) != (zj > blockZ)
+                    && blockX < (double) (xj - xi) * (blockZ - zi) / (zj - zi) + xi) inside = !inside;
+        }
+        return inside;
+    }
+
+    private static boolean onSegment(int ax, int az, int bx, int bz, int x, int z) {
+        long cross = (long) (x - ax) * (bz - az) - (long) (z - az) * (bx - ax);
+        return cross == 0 && x >= Math.min(ax, bx) && x <= Math.max(ax, bx)
+                && z >= Math.min(az, bz) && z <= Math.max(az, bz);
+    }
 }

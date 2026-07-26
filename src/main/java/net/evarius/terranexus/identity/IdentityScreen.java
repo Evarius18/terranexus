@@ -8,7 +8,6 @@ import net.minecraft.item.Items;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
-import net.evarius.terranexus.economy.EconomyState;
 import net.evarius.terranexus.management.CustomGuiService;
 
 import java.util.List;
@@ -28,7 +27,6 @@ public final class IdentityScreen {
         inventory.display(22, "Geschlecht", identity.gender(), Items.PLAYER_HEAD);
         inventory.display(24, "Meldeadresse", identity.address(), Items.OAK_DOOR);
         java.util.UUID citizenUuid = java.util.UUID.fromString(identity.playerUuid());
-        inventory.display(26, "Kontostand", EconomyState.format(EconomyState.get(player.getServer()).balance(citizenUuid)), Items.GOLD_INGOT);
         boolean approved = IdentityState.get(player.getServer()).isApproved(citizenUuid);
         inventory.display(0, "Einreisestatus", approved ? "Freigegeben" : "In behördlicher Prüfung",
                 approved ? Items.LIME_DYE : Items.YELLOW_DYE);

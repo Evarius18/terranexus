@@ -12,6 +12,8 @@ public final class SalaryConfig {
     public boolean notifyEmployees = true;
     public boolean notifyResponsibleStaffOnFailure = true;
     public int maximumAdministrationEmployees = 500;
+    public Map<String, Long> institutionSalaryGroups = new LinkedHashMap<>(Map.of(
+            "Standard", 0L, "Teilzeit", 0L, "Vollzeit", 0L));
     public Map<String, Long> administrationSalaryGroups = new LinkedHashMap<>(Map.of(
             "Angestellte", 0L, "Sachbearbeitung", 0L, "Leitung", 0L));
 
@@ -20,13 +22,18 @@ public final class SalaryConfig {
         maximumSalary = Math.max(0, maximumSalary);
         defaultSalary = ConfigManager.clamp(defaultSalary, 0, maximumSalary);
         maximumAdministrationEmployees = ConfigManager.clamp(maximumAdministrationEmployees, 1, 10_000);
+        institutionSalaryGroups = validateGroups(institutionSalaryGroups, "Standard");
+        administrationSalaryGroups = validateGroups(administrationSalaryGroups, "Angestellte");
+    }
+
+    private Map<String, Long> validateGroups(Map<String, Long> configured, String fallback) {
         LinkedHashMap<String, Long> groups = new LinkedHashMap<>();
-        if (administrationSalaryGroups != null) administrationSalaryGroups.forEach((name, salary) -> {
+        if (configured != null) configured.forEach((name, salary) -> {
             String clean = ConfigManager.text(name, "", 48);
             if (!clean.isBlank() && groups.size() < 32)
                 groups.putIfAbsent(clean, ConfigManager.clamp(salary == null ? 0 : salary, 0, maximumSalary));
         });
-        if (groups.isEmpty()) groups.put("Angestellte", defaultSalary);
-        administrationSalaryGroups = groups;
+        if (groups.isEmpty()) groups.put(fallback, defaultSalary);
+        return groups;
     }
 }

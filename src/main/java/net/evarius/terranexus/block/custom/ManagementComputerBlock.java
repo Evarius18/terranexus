@@ -16,16 +16,15 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 
 public class ManagementComputerBlock extends HorizontalFacingBlock {
     public static final MapCodec<ManagementComputerBlock> CODEC = createCodec(ManagementComputerBlock::new);
-    private static final VoxelShape NORTH_SOUTH = VoxelShapes.union(
-            Block.createCuboidShape(1, 0, 2, 15, 2, 15), Block.createCuboidShape(2, 2, 10, 14, 15, 14));
-    private static final VoxelShape EAST_WEST = VoxelShapes.union(
-            Block.createCuboidShape(1, 0, 1, 14, 2, 15), Block.createCuboidShape(2, 2, 2, 6, 15, 14));
+    private static final VoxelShape NORTH_SOUTH =
+            Block.createCuboidShape(0, 0, 0.5, 15, 9.25, 11.5);
+    private static final VoxelShape EAST_WEST =
+            Block.createCuboidShape(4.5, 0, 0, 15.5, 9.25, 15);
 
     public ManagementComputerBlock(Settings settings) {
         super(settings);

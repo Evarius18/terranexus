@@ -7,7 +7,8 @@ import java.util.List;
 import java.util.Map;
 
 public record LandAccess(String propertyId, Map<String, List<String>> grants, Map<String, Boolean> publicRules) {
-    public static final String BUILD = "build", INTERACT = "interact", CONTAINERS = "containers", REDSTONE = "redstone";
+    public static final String BUILD = "build", INTERACT = "interact", CONTAINERS = "containers",
+            MANAGE_CONTAINERS = "manage_containers", REDSTONE = "redstone";
     public static final Codec<LandAccess> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.STRING.fieldOf("property_id").forGetter(LandAccess::propertyId),
             Codec.unboundedMap(Codec.STRING, Codec.STRING.listOf()).optionalFieldOf("grants", Map.of()).forGetter(LandAccess::grants),

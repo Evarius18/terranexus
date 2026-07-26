@@ -44,6 +44,11 @@ public final class LandRegistryScreen {
                 properties.size() + " eigene Grundstücke · Seite " + (page + 1) + "/" + pages);
         button(inventory, actions, 1, Items.EMERALD, "Grundstücksmarkt", "Öffentliche Kaufangebote", ignored -> market(player, 0));
         button(inventory, actions, 3, Items.WRITABLE_BOOK, "Meine Mietverträge", "Angebote und aktive Verträge", ignored -> leases(player, 0));
+        int pendingTransfers = net.evarius.terranexus.landlord.LandTransferService.pendingFor(player).size();
+        button(inventory, actions, 5, pendingTransfers > 0 ? Items.LIME_DYE : Items.PAPER, "Übertragungen",
+                pendingTransfers + " offene Vorgänge", ignored -> LandTransferScreen.openRegistry(player));
+        button(inventory, actions, 6, Items.WRITTEN_BOOK, "Vermieterübersicht",
+                "Eigene Mietangebote und aktive Mietverträge", ignored -> LandlordLeaseScreen.openPersonal(player));
         if (page > 0) button(inventory, actions, 0, Items.ARROW, "Vorherige Seite", "Seite " + page, ignored -> owned(player, page - 1));
         if (page + 1 < pages) button(inventory, actions, 7, Items.ARROW, "Nächste Seite", "Seite " + (page + 2), ignored -> owned(player, page + 1));
         int slot = 9;
@@ -133,6 +138,8 @@ public final class LandRegistryScreen {
                 + new SimpleDateFormat("dd.MM.yyyy HH:mm").format(new Date(history.getFirst().timestamp()));
         display(inventory, 26, Items.CLOCK, "Eigentümerhistorie", historyText);
         button(inventory, actions, 8, Items.ARROW, "Zurück", "Zum Grundbuchauszug", ignored -> owned(player, returnPage));
+        button(inventory, actions, 53, Items.BARRIER, "Akte schließen",
+                "Grundbuchsitzung vollständig beenden", ignored -> { });
         menu(player, inventory, actions, "Grundstücksakte");
     }
 

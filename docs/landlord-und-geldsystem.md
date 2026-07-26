@@ -13,8 +13,9 @@ Grundstücksakte führt zurück in die Grundbuchverwaltung und niemals unbeabsic
 
 Die Berechtigungsstufen sind:
 
-- `land_surveyor`: Grundstücke vermessen, anlegen und geometrisch bearbeiten;
-- `land_clerk`: Eigentümer, Adressen, Verträge und Einzelrechte bearbeiten;
+- `land_surveyor`: Grundstücke vermessen, anlegen, geometrisch bearbeiten und Eigentumsumschreibungen initiieren;
+- `land_clerk`: Grundstücke anlegen sowie Adressen, Verträge und Grundbuchdaten bearbeiten; eine
+  Eigentumsumschreibung erfordert zusätzlich `land_surveyor`;
 - `land_administrator`: vollständiger Zugriff, Verwaltungsebenen, Audit-Log und Löschungen;
 - `land_registrar`: kompatible Altsystemrolle mit vollständigem Zugriff.
 
@@ -46,6 +47,10 @@ Grundstück. Bestehende Geometrien besitzen Rückgängig, Vorschau, Vergrößern
 
 Die 3×3-Übersicht prüft ganze Chunkflächen und nicht nur den Chunkmittelpunkt. Dadurch werden auch kleine oder
 in anderer Höhe liegende Quader korrekt als belegt angezeigt.
+
+Neue Eigentumsumschreibungen werden im Bauamt-Tablet über
+`Umschreibungen` → `Neue Umschreibung` gestartet. Anschließend werden Grundstück, Eigentümerart und Empfänger
+ausgewählt. Der Ablauf ist für `land_surveyor` sichtbar; offene Zustimmungen bleiben in derselben Übersicht.
 
 ## Grundbuchauszug für Eigentümer
 

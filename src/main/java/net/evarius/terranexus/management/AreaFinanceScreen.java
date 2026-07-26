@@ -115,6 +115,8 @@ public final class AreaFinanceScreen {
         SimpleInventory inventory = new SimpleInventory(54);
         Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
         display(inventory, 4, Items.FILLED_MAP, area.name() + " · Flächen", properties.size() + " Einträge · Seite " + (page + 1) + "/" + pages);
+        displayButton(inventory, actions, 1, Items.WRITTEN_BOOK, "Vermieterübersicht", "Mietangebote und aktive Verträge",
+                ignored -> LandlordLeaseScreen.openArea(player, areaId));
         if (page > 0) displayButton(inventory, actions, 0, Items.ARROW, "Vorherige Seite", "Seite " + page,
                 ignored -> properties(player, areaId, page - 1));
         if (page + 1 < pages) displayButton(inventory, actions, 7, Items.ARROW, "Nächste Seite", "Seite " + (page + 2),

@@ -54,5 +54,20 @@
   "gui.terranexus.search.empty": "No matching results found",
   "gui.terranexus.search.minimum_length": "At least %s characters are required.",
   "gui.terranexus.toolbar.more": "More %s/%s",
-  "gui.terranexus.toolbar.more.tooltip": "Show more actions from this toolbar"
+  "gui.terranexus.toolbar.more.tooltip": "Show more actions from this toolbar",
+  "item.terranexus.mobile_phone": "TN Phone",
+  "item.terranexus.employee_chip": "Personalized Employee ID",
+  "item.terranexus.property_key": "Coded Property Key",
+  "block.terranexus.time_clock_terminal": "Digital Time Clock",
+  "item.terranexus.time_clock_terminal": "Digital Time Clock",
+  "gui.terranexus.id.country": "FEDERAL REPUBLIC OF TERRANEXUS",
+  "gui.terranexus.id.document": "IDENTITY CARD",
+  "gui.terranexus.id.photo": "PHOTO",
+  "gui.terranexus.id.surname": "Surname",
+  "gui.terranexus.id.given_names": "Given names",
+  "gui.terranexus.id.birth_date": "Date of birth",
+  "gui.terranexus.id.nationality": "Nationality",
+  "gui.terranexus.id.gender": "Sex",
+  "gui.terranexus.id.birth_place": "Place / country of birth",
+  "gui.terranexus.id.address": "Address"
 }

@@ -9,6 +9,7 @@
 		"FarmlandProtectionMixin",
 		"FireProtectionMixin",
 		"FluidProtectionMixin",
+		"HopperContainerLockMixin",
 		"PistonProtectionMixin"
 	],
 	"injectors": {

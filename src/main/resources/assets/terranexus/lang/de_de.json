@@ -18,6 +18,11 @@
   "item.terranexus.building_authority_tablet": "Bauamt-Tablet",
   "item.terranexus.land_survey_tool": "Landvermessungsgerät",
   "item.terranexus.land_registry_extract": "Grundbuchauszug",
+  "item.terranexus.mobile_phone": "TN-Handy",
+  "item.terranexus.employee_chip": "Personalisierter Dienstausweis",
+  "item.terranexus.property_key": "Codierter Immobilien-Schlüssel",
+  "block.terranexus.time_clock_terminal": "Digitale Stempeluhr",
+  "item.terranexus.time_clock_terminal": "Digitale Stempeluhr",
   "gui.terranexus.close": "Schließen",
   "gui.terranexus.secure_session": "Serverseitig geprüfte Verwaltungssitzung",
   "gui.terranexus.client_required": "Für diese Verwaltungsoberfläche muss TerraNexus auch auf dem Client installiert sein.",
@@ -55,4 +60,14 @@
   "gui.terranexus.search.minimum_length": "Mindestens %s Zeichen erforderlich.",
   "gui.terranexus.toolbar.more": "Weitere %s/%s",
   "gui.terranexus.toolbar.more.tooltip": "Weitere Aktionen dieser Werkzeugleiste anzeigen"
+  ,"gui.terranexus.id.country": "BUNDESREPUBLIK TERRANEXUS"
+  ,"gui.terranexus.id.document": "PERSONALAUSWEIS · IDENTITY CARD"
+  ,"gui.terranexus.id.photo": "LICHTBILD"
+  ,"gui.terranexus.id.surname": "Name / Surname"
+  ,"gui.terranexus.id.given_names": "Vornamen / Given names"
+  ,"gui.terranexus.id.birth_date": "Geburtsdatum"
+  ,"gui.terranexus.id.nationality": "Staatsangehörigkeit"
+  ,"gui.terranexus.id.gender": "Geschlecht"
+  ,"gui.terranexus.id.birth_place": "Geburtsort / Geburtsland"
+  ,"gui.terranexus.id.address": "Anschrift"
 }

@@ -1,6 +1,5 @@
 package net.evarius.terranexus.landlord;
 
-import net.evarius.terranexus.identity.AuthorityState;
 import net.evarius.terranexus.item.ModItems;
 import net.evarius.terranexus.network.UndoSurveyPointPayload;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -20,8 +19,8 @@ public final class LandSurveyEvents {
     private static void undo(ServerPlayerEntity player) {
         if (!player.getMainHandStack().isOf(ModItems.LAND_SURVEY_TOOL)
                 && !player.getOffHandStack().isOf(ModItems.LAND_SURVEY_TOOL)) return;
-        if (!AuthorityState.maySurveyLand(player)) {
-            player.sendMessage(Text.literal("Keine Vermessungsberechtigung.").formatted(Formatting.RED), true);
+        if (!LandPermissionService.mayCreateProperty(player)) {
+            player.sendMessage(Text.literal("Keine Berechtigung zum Anlegen von Grundstücken.").formatted(Formatting.RED), true);
             return;
         }
         LandSelectionState selections = LandSelectionState.get(player.getServer());

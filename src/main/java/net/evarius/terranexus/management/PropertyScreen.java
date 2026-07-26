@@ -19,6 +19,8 @@ import net.evarius.terranexus.landlord.LandlordState;
 import net.evarius.terranexus.landlord.PropertyDrafts;
 import net.evarius.terranexus.landlord.LandVisuals;
 import net.evarius.terranexus.landlord.AdministrativeArea;
+import net.evarius.terranexus.landlord.LandTransferService;
+import net.evarius.terranexus.landlord.LandPermissionService;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Items;
 import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
@@ -38,6 +40,10 @@ public final class PropertyScreen {
     private PropertyScreen() {}
 
     public static void open(ServerPlayerEntity player) {
+        open(player, 0);
+    }
+
+    private static void open(ServerPlayerEntity player, int requestedPage) {
         if(!AuthorityState.mayUseLandOffice(player)){player.sendMessage(Text.literal("Zugriff verweigert: Bauamtsberechtigung erforderlich.").formatted(Formatting.RED),false);return;}
         PropertyDrafts.EditDraft draft = PropertyDrafts.edit(player.getUuid());
         if (draft != null) { openEditor(player); return; }
@@ -50,6 +56,10 @@ public final class PropertyScreen {
                 "Position: " + player.getBlockX() + ", " + player.getBlockY() + ", " + player.getBlockZ());
         ManagementHubScreen.display(inventory, 8, Items.ARROW, "Zurück", "Verwaltungsübersicht");
         actions.put(8, ignored -> AdminDesktopScreen.open(player));
+        int pendingTransfers = LandTransferService.pendingFor(player).size();
+        ManagementHubScreen.display(inventory, 5, pendingTransfers > 0 ? Items.LIME_DYE : Items.PAPER,
+                "Umschreibungen", pendingTransfers + " offene Vorgänge · neue Übertragung anlegen");
+        actions.put(5, ignored -> LandTransferScreen.openLandOffice(player));
         ManagementHubScreen.display(inventory,7,Items.COMPASS,"Grundstück suchen","ID, Name oder Besitzer");actions.put(7,x->LandSearchScreen.ask(player));
         if(AuthorityState.mayAdministerLand(player)){ManagementHubScreen.display(inventory,6,Items.WRITABLE_BOOK,"Audit-Log","Erstellungen, Änderungen und Eigentümerwechsel");actions.put(6,x->LandSearchScreen.audit(player));}
         if(AuthorityState.mayAdministerLand(player)){ManagementHubScreen.display(inventory, 17, Items.BELL, "Verwaltungshierarchie", "Wilderness, Ebenen und Zuständigkeiten organisieren");actions.put(17, ignored -> LandAdministrationScreen.open(player));}
@@ -63,7 +73,7 @@ public final class PropertyScreen {
             if (at != null) actions.put(slot, ignored -> { if (mayEdit(player, at)) beginEdit(player, at); else PropertyFinanceScreen.open(player, at); });
         }
 
-        if (AuthorityState.maySurveyLand(player)) {
+        if (LandPermissionService.mayCreateProperty(player)) {
             ManagementHubScreen.display(inventory, 10, Items.GRASS_BLOCK, "Chunk anlegen", "Aktueller 16×16-Bereich");
             actions.put(10, ignored -> askName(player, name -> finishCreate(player, state,
                     LandlordState.chunk(name, player.getUuid(), dimension, player.getBlockX() >> 4, player.getBlockZ() >> 4))));
@@ -83,14 +93,25 @@ public final class PropertyScreen {
                     "Neue Flächen legt eine autorisierte Stelle an");
         }
 
-        int slot = 45;
-        for (LandProperty property : state.all()) {
-            if (slot >= 54) break;
+        List<LandProperty> visibleProperties = state.all().stream().filter(property -> {
             LandManagementState management = LandManagementState.get(player.getServer());
             LandSaleOffer offer = management.sale(property.id()); LandLease lease = management.lease(property.id());
-            if (!mayEdit(player, property) && offer == null && (lease == null || !lease.tenantId().equals(player.getUuidAsString()))) continue;
+            return AuthorityState.mayUseLandOffice(player) || mayEdit(player, property) || offer != null
+                    || lease != null && lease.tenantId().equals(player.getUuidAsString());
+        }).toList();
+        int pageSize = 7;
+        int pages = Math.max(1, (visibleProperties.size() + pageSize - 1) / pageSize);
+        int page = Math.max(0, Math.min(requestedPage, pages - 1));
+        if (page > 0) button(inventory, actions, 45, Items.ARROW, "Vorherige Seite",
+                "Grundstücke · Seite " + page, ignored -> open(player, page - 1));
+        if (page + 1 < pages) button(inventory, actions, 53, Items.ARROW, "Nächste Seite",
+                "Grundstücke · Seite " + (page + 2), ignored -> open(player, page + 1));
+        int slot = 46;
+        for (LandProperty property : visibleProperties.subList(page * pageSize,
+                Math.min(visibleProperties.size(), (page + 1) * pageSize))) {
             ManagementHubScreen.display(inventory, slot, Items.PAPER, property.name(),
-                    type(property) + " · " + property.minX() + "," + property.minZ() + " bis " + property.maxX() + "," + property.maxZ() + " · Anklicken zum Bearbeiten");
+                    type(property) + " · " + property.minX() + "," + property.minZ() + " bis "
+                            + property.maxX() + "," + property.maxZ() + " · Seite " + (page + 1) + "/" + pages);
             actions.put(slot++, ignored -> { if (mayEdit(player, property)) beginEdit(player, property); else PropertyFinanceScreen.open(player, property); });
         }
         openMenu(player, inventory, actions, "TerraNexus Grundstücke");
@@ -113,13 +134,23 @@ public final class PropertyScreen {
         button(inventory, actions, 31, Items.RED_DYE, "Um 1 Block verkleinern", "Eckpunkte zum Mittelpunkt bewegen", ignored -> { draft.scale(-1); refreshEditor(player); });
         button(inventory, actions, 33, Items.ENDER_EYE, "Grenze anzeigen", "Partikel markieren alle Kanten", ignored -> { preview(player, draft.points()); openEditor(player); });
         button(inventory, actions, 45, Items.NAME_TAG, "Umbenennen", property.name(), ignored -> askName(player, value -> { state.update(property.withName(value)); LandAuditState.get(player.getServer()).log(player.getUuid(),"RENAME",property,property.name()+" -> "+value); openEditor(player); }));
-        if (AuthorityState.mayProcessLandRecords(player)) button(inventory, actions, 47, Items.PLAYER_HEAD, "Eigentümer zuweisen", ownerLabel(player, property), ignored -> openOwnerSelection(player, property));
-        button(inventory, actions, 51, Items.GOLD_INGOT, "Verträge und Rechte", "Verkauf, Vermietung, Zugriff und Verwaltungsebene", ignored -> PropertyFinanceScreen.open(player, property));
+        if (LandTransferService.mayInitiate(player)) button(inventory, actions, 47, Items.PLAYER_HEAD,
+                "Eigentümer übertragen", ownerLabel(player, property), ignored -> {
+                    PropertyDrafts.cancelEdit(player.getUuid());
+                    openOwnerSelection(player, property);
+                });
+        button(inventory, actions, 51, Items.GOLD_INGOT, "Verträge und Rechte",
+                "Verkauf, Vermietung, Zugriff und Verwaltungsebene", ignored -> {
+                    PropertyDrafts.cancelEdit(player.getUuid());
+                    PropertyFinanceScreen.open(player, property);
+                });
         if(AuthorityState.mayAdministerLand(player))button(inventory,actions,43,Items.LAVA_BUCKET,"Grundstück löschen","Nur Bauamtsleitung · mit Bestätigung",ignored->confirmDelete(player,property));
         if(AuthorityState.mayProcessLandRecords(player))button(inventory,actions,41,Items.OAK_SIGN,"Adresse eintragen",LandManagementState.get(player.getServer()).address(property.id()),ignored->askAddress(player,property));
         button(inventory, actions, 49, Items.EMERALD, "Änderungen speichern", "Prüft Form und Überschneidungen", ignored -> saveEdit(player, state, property, draft));
         button(inventory, actions, 53, Items.BARRIER, "Abbrechen", "Entwurf verwerfen", ignored -> { PropertyDrafts.cancelEdit(player.getUuid()); open(player); });
-        openMenu(player, inventory, actions, "Grundstück bearbeiten");
+        CustomGuiService.openWithCloseHandler(player, inventory, actions,
+                Text.literal("Grundstück bearbeiten").formatted(Formatting.DARK_GREEN),
+                () -> PropertyDrafts.cancelEdit(player.getUuid()));
     }
 
     private static void refreshEditor(ServerPlayerEntity player) { preview(player, PropertyDrafts.edit(player.getUuid()).points()); openEditor(player); }
@@ -155,7 +186,7 @@ public final class PropertyScreen {
     }
     private static void finishCreate(ServerPlayerEntity player, LandlordState state, LandProperty property) {LandProperty conflict=state.conflict(property);if(conflict!=null){error(player,"Überschneidung mit „"+conflict.name()+"“ (ID "+conflict.id()+").");open(player);return;}SimpleInventory inventory=new SimpleInventory(54);Map<Integer,Consumer<net.minecraft.entity.player.PlayerEntity>> actions=new HashMap<>();ManagementHubScreen.display(inventory,4,Items.FILLED_MAP,"Vorschau: "+property.name(),type(property)+" · "+property.minX()+","+property.minZ()+" bis "+property.maxX()+","+property.maxZ());ManagementHubScreen.display(inventory,20,Items.EMERALD,"Endgültig eintragen","Grundstück wird persistent gespeichert");actions.put(20,x->commitCreate(player,state,property));ManagementHubScreen.display(inventory,24,Items.BARRIER,"Abbrechen","Auswahl bleibt für Korrekturen erhalten");actions.put(24,x->open(player));openMenu(player,inventory,actions,"Grundstück bestätigen");}
     private static void commitCreate(ServerPlayerEntity player, LandlordState state, LandProperty property) {
-        if(!AuthorityState.maySurveyLand(player)){error(player,"Deine Vermessungsberechtigung ist nicht mehr gültig.");return;}
+        if(!LandPermissionService.mayCreateProperty(player)){error(player,"Deine Berechtigung zum Anlegen von Grundstücken ist nicht mehr gültig.");return;}
         if (state.add(property)) {
             LandManagementState management = LandManagementState.get(player.getServer());
             management.assignArea(property.id(), LandManagementState.ROOT_AREA_ID);
@@ -168,21 +199,35 @@ public final class PropertyScreen {
         open(player);
     }
 
-    private static void startSurvey(ServerPlayerEntity player,String dimension){net.minecraft.item.ItemStack tool=new net.minecraft.item.ItemStack(ModItems.LAND_SURVEY_TOOL);if(!player.getInventory().contains(tool)){error(player,"Kein Landvermessungsgerät im Inventar. Hole die Hardware vor dem Einsatz aus dem Lager.");open(player);return;}LandSelectionState selections=LandSelectionState.get(player.getServer());LandSelection current=selections.get(player.getUuid());if(current==null||!current.dimension().equals(dimension))selections.start(player.getUuid(),dimension);player.closeHandledScreen();player.sendMessage(Text.literal("Vermessung aktiv: Rechtsklick setzt einen Eckpunkt, Linksklick entfernt den letzten. Öffne zum Abschluss wieder das Bauamt-Tablet.").formatted(Formatting.GREEN),false);}
+    private static void startSurvey(ServerPlayerEntity player,String dimension){if(!LandPermissionService.mayCreateProperty(player)){error(player,"Keine Berechtigung zum Anlegen von Grundstücken.");return;}net.minecraft.item.ItemStack tool=new net.minecraft.item.ItemStack(ModItems.LAND_SURVEY_TOOL);if(!player.getInventory().contains(tool)){error(player,"Kein Landvermessungsgerät im Inventar. Hole die Hardware vor dem Einsatz aus dem Lager.");open(player);return;}LandSelectionState selections=LandSelectionState.get(player.getServer());LandSelection current=selections.get(player.getUuid());if(current==null||!current.dimension().equals(dimension))selections.start(player.getUuid(),dimension);player.closeHandledScreen();player.sendMessage(Text.literal("Vermessung aktiv: Rechtsklick setzt einen Eckpunkt, Linksklick entfernt den letzten. Öffne zum Abschluss wieder das Bauamt-Tablet.").formatted(Formatting.GREEN),false);}
 
     private static void preview(ServerPlayerEntity player, List<BlockPos> points) {
         LandVisuals.preview(player, points);
     }
 
-    private static void openOwnerSelection(ServerPlayerEntity player, LandProperty property) {
-        if (!AuthorityState.mayProcessLandRecords(player)) { openEditor(player); return; }
+    static void openOwnerSelection(ServerPlayerEntity player, LandProperty property) {
+        if (!LandTransferService.mayInitiate(player)) {
+            error(player, LandPermissionService.transferDenial(player));
+            PropertyFinanceScreen.open(player, property);
+            return;
+        }
         SimpleInventory inventory = new SimpleInventory(54); Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
         ManagementHubScreen.display(inventory, 4, Items.WRITABLE_BOOK, "Eigentümer: " + property.name(), "Eigentümerart auswählen");
-        ManagementHubScreen.display(inventory, 8, Items.ARROW, "Zurück", "Zum Flächeneditor"); actions.put(8, ignored -> openEditor(player));
+        ManagementHubScreen.display(inventory, 8, Items.ARROW, "Zurück", "Zur Grundstücksakte"); actions.put(8, ignored -> backFromOwnerSelection(player, property));
         button(inventory, actions, 20, Items.PLAYER_HEAD, "Bürger", "Freigeschaltete Bürgerakte", ignored -> playerOwners(player, property, 0));
         button(inventory, actions, 22, Items.BRICKS, "Institution", "Unternehmen, Behörde oder Organisation", ignored -> institutionOwners(player, property, 0));
         button(inventory, actions, 24, Items.FILLED_MAP, "Verwaltungseinheit", "Stadt, Gemeinde, Landkreis oder andere Ebene", ignored -> areaOwners(player, property, 0));
         openMenu(player, inventory, actions, "Eigentümer zuweisen");
+    }
+
+    private static void backFromOwnerSelection(ServerPlayerEntity player, LandProperty property) {
+        PropertyDrafts.EditDraft draft = PropertyDrafts.edit(player.getUuid());
+        if (draft != null && draft.propertyId().equals(property.id())) {
+            openEditor(player);
+            return;
+        }
+        LandProperty current = LandlordState.get(player.getServer()).get(property.id());
+        if (current == null) open(player); else PropertyFinanceScreen.open(player, current);
     }
 
     private static void playerOwners(ServerPlayerEntity player, LandProperty property, int requestedPage) {
@@ -193,7 +238,7 @@ public final class PropertyScreen {
         for (int index = start; index < Math.min(start + 36, values.size()); index++) {
             CitizenIdentity identity = values.get(index); String rpName = identity.firstName() + " " + identity.lastName();
             button(inventory, actions, 9 + index - start, Items.PLAYER_HEAD, rpName, identity.citizenNumber(),
-                    ignored -> assignOwner(player, property, "player", identity.playerUuid(), rpName));
+                    ignored -> assignOwner(player, property, "player", identity.playerUuid()));
         }
         ownerNavigation(player, property, inventory, actions, page, values.size(), p -> playerOwners(player, property, p));
         openMenu(player, inventory, actions, "Bürger als Eigentümer");
@@ -205,7 +250,7 @@ public final class PropertyScreen {
         for (int index = start; index < Math.min(start + 36, values.size()); index++) {
             Institution institution = values.get(index);
             button(inventory, actions, 9 + index - start, Items.BRICKS, institution.name(), institution.type(),
-                    ignored -> assignOwner(player, property, "institution", institution.id(), institution.name()));
+                    ignored -> assignOwner(player, property, "institution", institution.id()));
         }
         ownerNavigation(player, property, inventory, actions, page, values.size(), p -> institutionOwners(player, property, p));
         openMenu(player, inventory, actions, "Institution als Eigentümer");
@@ -217,7 +262,7 @@ public final class PropertyScreen {
         for (int index = start; index < Math.min(start + 36, values.size()); index++) {
             AdministrativeArea area = values.get(index);
             button(inventory, actions, 9 + index - start, Items.FILLED_MAP, area.name(), management.levelName(area.level()),
-                    ignored -> assignOwner(player, property, LandManagementState.AREA_OWNER_TYPE, area.id(), area.name()));
+                    ignored -> assignOwner(player, property, LandManagementState.AREA_OWNER_TYPE, area.id()));
         }
         ownerNavigation(player, property, inventory, actions, page, values.size(), p -> areaOwners(player, property, p));
         openMenu(player, inventory, actions, "Verwaltung als Eigentümer");
@@ -232,21 +277,12 @@ public final class PropertyScreen {
         if ((page + 1) * 36 < size) button(inventory, actions, 53, Items.ARROW, "Nächste Seite", String.valueOf(page + 2), ignored -> opener.accept(page + 1));
     }
 
-    private static void assignOwner(ServerPlayerEntity player, LandProperty property, String type, String id, String label) {
-        if(!AuthorityState.mayProcessLandRecords(player)){error(player,"Deine Grundbuchberechtigung ist nicht mehr gültig.");return;}
-        LandlordState state = LandlordState.get(player.getServer()); LandProperty current = state.get(property.id());
-        boolean valid = current != null && id != null && !id.isBlank()
-                && (!type.equals(LandManagementState.AREA_OWNER_TYPE) || LandManagementState.get(player.getServer()).area(id) != null)
-                && (!type.equals("institution") || InstitutionState.get(player.getServer()).get(id) != null)
-                && (!type.equals("player") || approvedIdentity(player, id));
-        if (valid && state.update(current.withOwner(type, id))){LandAuditState.get(player.getServer()).owner(player.getUuid(),current,type,id);notifyOwnerChange(player,current,type,id);player.sendMessage(Text.literal("„" + current.name() + "“ gehört nun " + label + ".").formatted(Formatting.GREEN), false);}
-        else if (!valid) error(player, "Der ausgewählte Eigentümer ist nicht mehr verfügbar.");
+    private static void assignOwner(ServerPlayerEntity player, LandProperty property, String type, String id) {
+        LandTransferService.Result result = LandTransferService.request(player, property.id(), type, id);
+        player.sendMessage(Text.literal(result.message()).formatted(result.success() ? Formatting.GREEN : Formatting.RED), false);
         PropertyDrafts.cancelEdit(player.getUuid()); open(player);
     }
-    private static boolean approvedIdentity(ServerPlayerEntity player,String id){try{return IdentityState.get(player.getServer()).isApproved(UUID.fromString(id));}catch(IllegalArgumentException ignored){return false;}}
-    private static void confirmDelete(ServerPlayerEntity player,LandProperty property){SimpleInventory inventory=new SimpleInventory(54);Map<Integer,Consumer<net.minecraft.entity.player.PlayerEntity>> actions=new HashMap<>();ManagementHubScreen.display(inventory,4,Items.BARRIER,"Wirklich löschen?",property.name()+" · "+property.id());ManagementHubScreen.display(inventory,20,Items.LAVA_BUCKET,"Endgültig löschen","Dieser Schritt kann nicht rückgängig gemacht werden");actions.put(20,x->{if(!AuthorityState.mayAdministerLand(player)){error(player,"Bauamtsleitung erforderlich.");return;}LandAuditState.get(player.getServer()).log(player.getUuid(),"DELETE",property,property.name());LandlordState.get(player.getServer()).remove(property.id());LandManagementState.get(player.getServer()).removePropertyData(property.id());PropertyDrafts.cancelEdit(player.getUuid());open(player);});ManagementHubScreen.display(inventory,24,Items.ARROW,"Abbrechen","Grundstück behalten");actions.put(24,x->openEditor(player));openMenu(player,inventory,actions,"Löschen bestätigen");}
-    private static void notifyOwnerChange(ServerPlayerEntity actor,LandProperty old,String newType,String newId){if(old.ownerType().equals("player"))notifyPlayer(actor,old.ownerId(),"Dein Eigentum an „"+old.name()+"“ wurde übertragen.");if(newType.equals("player"))notifyPlayer(actor,newId,"Du bist nun als Eigentümer von „"+old.name()+"“ eingetragen.");}
-    private static void notifyPlayer(ServerPlayerEntity actor,String uuid,String message){try{ServerPlayerEntity target=actor.getServer().getPlayerManager().getPlayer(UUID.fromString(uuid));if(target!=null){target.sendMessage(Text.literal(message).formatted(Formatting.GOLD),false);net.minecraft.item.ItemStack extract=new net.minecraft.item.ItemStack(ModItems.LAND_REGISTRY_EXTRACT);if(!target.getInventory().contains(extract))target.giveItemStack(extract);}}catch(Exception ignored){}}
+    private static void confirmDelete(ServerPlayerEntity player,LandProperty property){SimpleInventory inventory=new SimpleInventory(54);Map<Integer,Consumer<net.minecraft.entity.player.PlayerEntity>> actions=new HashMap<>();ManagementHubScreen.display(inventory,4,Items.BARRIER,"Wirklich löschen?",property.name()+" · "+property.id());ManagementHubScreen.display(inventory,20,Items.LAVA_BUCKET,"Endgültig löschen","Dieser Schritt kann nicht rückgängig gemacht werden");actions.put(20,x->{if(!AuthorityState.mayAdministerLand(player)){error(player,"Bauamtsleitung erforderlich.");return;}LandAuditState.get(player.getServer()).log(player.getUuid(),"DELETE",property,property.name());LandTransferService.cancelForProperty(player.getServer(),property.id());LandManagementState.get(player.getServer()).removeContainerLocks(property);LandlordState.get(player.getServer()).remove(property.id());LandManagementState.get(player.getServer()).removePropertyData(property.id());PropertyDrafts.cancelEdit(player.getUuid());open(player);});ManagementHubScreen.display(inventory,24,Items.ARROW,"Abbrechen","Grundstück behalten");actions.put(24,x->openEditor(player));openMenu(player,inventory,actions,"Löschen bestätigen");}
     private static String ownerLabel(ServerPlayerEntity player, LandProperty property) {
         if (property.ownerType().equals("institution")) { Institution institution = InstitutionState.get(player.getServer()).get(property.ownerId()); return institution == null ? "Unbekannte Institution" : institution.name(); }
         if (property.ownerType().equals(LandManagementState.AREA_OWNER_TYPE)) { AdministrativeArea area = LandManagementState.get(player.getServer()).area(property.ownerId()); return area == null ? ConfigManager.administration().wildernessName : area.name(); }
