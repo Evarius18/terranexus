@@ -111,6 +111,9 @@ public final class LandTradeService {
             return Result.fail("Ungültige Vertragswerte.");
         if (!IdentityState.get(actor.getServer()).isApproved(tenantId)) return Result.fail("Der Mieter besitzt keine freigeschaltete Bürgerakte.");
         LandManagementState management = LandManagementState.get(actor.getServer());
+        ResidentialUnit unit = management.residentialUnit(propertyId);
+        if (unit != null && unit.commonArea())
+            return Result.fail("Gemeinschaftsbereiche können nicht als einzelne Wohnung vermietet werden.");
         if (management.lease(propertyId) != null) return Result.fail("Für dieses Grundstück besteht bereits ein Mietangebot oder Vertrag.");
         management.setLease(LandLease.offer(propertyId, ownerAccount(property), tenantId.toString(), rent, deposit,
                 periodDays, termPayments, autoRenew));
@@ -127,6 +130,9 @@ public final class LandTradeService {
                 || termPayments < 0 || termPayments > 10_000)
             return Result.fail("Ungültige Vertragswerte.");
         LandManagementState management = LandManagementState.get(actor.getServer());
+        ResidentialUnit unit = management.residentialUnit(propertyId);
+        if (unit != null && unit.commonArea())
+            return Result.fail("Gemeinschaftsbereiche können nicht als einzelne Wohnung vermietet werden.");
         if (management.lease(propertyId) != null)
             return Result.fail("Für diese Immobilie besteht bereits ein Mietangebot oder Vertrag.");
         management.setLease(LandLease.offer(propertyId, ownerAccount(property), "", rent,

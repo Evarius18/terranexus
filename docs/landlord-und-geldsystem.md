@@ -83,6 +83,13 @@ Ein Miettag entspricht standardmäßig 1.440 Minuten. Für Tests kann `rentDayDu
 Die Rechteverwaltung trennt Bauen, allgemeine Interaktion, Container und Redstone. Eigentümer können diese
 Rechte öffentlich oder einzeln für registrierte Bürger freigeben. Aktive Mieter erhalten Grundstückszugriff.
 
+Mehrfamilienhäuser werden als persistente Gebäudeakten mit beliebig vielen Grundstückseinheiten abgebildet.
+In der Grundstücksakte öffnet `Mehrfamilienhaus` die Zuordnung. Jede Einheit wird entweder als eigenständige
+Wohnung oder als Gemeinschaftsbereich (beispielsweise Flur oder Treppenhaus) geführt. Wohnungen behalten
+ihren eigenen Mieter, Vertrag, Laufzeit, Schlüssel und Schutzbereich. Gemeinschaftsbereiche können nicht
+einzeln vermietet werden; aktive Hausmieter erhalten dort die konfigurierten Interaktions-, Container- und
+Redstonerechte, jedoch keine automatischen Baurechte. Bestehende Einzelmietverträge bleiben unverändert.
+
 ## Kistenshops
 
 Ein Shop besteht aus einer einzelnen Kiste und einem direkt angrenzenden Schild. Das Schild verwendet vier Zeilen:

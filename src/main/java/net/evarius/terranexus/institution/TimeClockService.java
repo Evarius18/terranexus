@@ -13,6 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.UUID;
 
 public final class TimeClockService {
@@ -49,6 +51,7 @@ public final class TimeClockService {
         int onDuty = state.onDutyCount(institutionId);
         List<RuleStatus> result = new ArrayList<>();
         ConfigManager.timeClock().rules.forEach((ruleId, rule) -> {
+            if (!rule.enabled) return;
             if (!applies(institution.type(), rule)) return;
             int threshold = state.threshold(institutionId, ruleId, rule.defaultThreshold);
             result.add(new RuleStatus(ruleId, rule.label, rule.description, onDuty, threshold,
@@ -65,12 +68,25 @@ public final class TimeClockService {
 
     public static int globalOnDutyForRule(MinecraftServer server, String ruleId) {
         TimeClockRuleConfig rule = ConfigManager.timeClock().rules.get(ruleId);
-        if (rule == null) return 0;
+        if (rule == null || !rule.enabled) return 0;
         TimeClockState state = TimeClockState.get(server);
-        int count = 0;
+        Set<String> matchingInstitutions = new HashSet<>();
         for (Institution institution : InstitutionState.get(server).all())
-            if (applies(institution.type(), rule)) count += state.onDutyCount(institution.id());
-        return count;
+            if (applies(institution.type(), rule)) matchingInstitutions.add(institution.id());
+        return (int) state.activeRecords().stream()
+                .filter(record -> matchingInstitutions.contains(record.institutionId()))
+                .map(DutyRecord::playerUuid).distinct().count();
+    }
+
+    /**
+     * Stable integration point for gameplay systems. Disabled clocks or disabled/missing rules
+     * leave the vanilla mechanic enabled; otherwise the configured comparison decides.
+     */
+    public static boolean gameplayRuleActive(MinecraftServer server, String ruleId) {
+        if (!ConfigManager.timeClock().enabled) return true;
+        TimeClockRuleConfig rule = ConfigManager.timeClock().rules.get(ruleId);
+        if (rule == null || !rule.enabled) return true;
+        return compare(globalOnDutyForRule(server, ruleId), rule.defaultThreshold, rule.comparison);
     }
 
     public static void tick(MinecraftServer server, long ticks) {

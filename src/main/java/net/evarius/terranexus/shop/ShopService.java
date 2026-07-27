@@ -86,7 +86,7 @@ public final class ShopService {
     }
 
     public static boolean mayManage(ServerPlayerEntity player, ShopRecord shop) {
-        if (player.hasPermissionLevel(2) || AuthorityState.isTnAdmin(player)) return true;
+        if (player.hasPermissionLevel(2) || AuthorityState.isAdministrator(player)) return true;
         if (player.getWorld().getRegistryKey().getValue().toString().equals(shop.dimension())) {
             LandProperty currentProperty = LandlordProtection.propertyAt(player.getWorld(), shop.signPos());
             if (LandTradeService.mayManageCommercially(player, currentProperty)) return true;
@@ -103,7 +103,7 @@ public final class ShopService {
     }
 
     public static boolean isShopAdministrator(ServerPlayerEntity player) {
-        return player.hasPermissionLevel(2) || AuthorityState.isTnAdmin(player);
+        return player.hasPermissionLevel(2) || AuthorityState.isAdministrator(player);
     }
 
     public static int stock(ServerWorld world, ShopRecord shop) {

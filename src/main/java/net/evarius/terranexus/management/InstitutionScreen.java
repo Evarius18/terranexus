@@ -26,7 +26,7 @@ public final class InstitutionScreen {
 
     private static void open(ServerPlayerEntity player, int requestedPage) {
         InstitutionState state = InstitutionState.get(player.getServer());
-        List<Institution> visible = AuthorityState.isTnAdmin(player) ? state.all() : state.forMember(player.getUuid());
+        List<Institution> visible = AuthorityState.isAdministrator(player) ? state.all() : state.forMember(player.getUuid());
         int pageSize = ConfigManager.desktop().standardEntriesPerPage;
         int pages = Math.max(1, (visible.size() + pageSize - 1) / pageSize);
         int page = Math.max(0, Math.min(requestedPage, pages - 1));
@@ -97,7 +97,7 @@ public final class InstitutionScreen {
     }
 
     private static boolean mayCreate(ServerPlayerEntity player) {
-        return AuthorityState.isTnAdmin(player) || player.hasPermissionLevel(2)
+        return AuthorityState.isAdministrator(player) || player.hasPermissionLevel(2)
                 || AuthorityState.get(player.getServer()).has(player.getUuid(), AuthorityState.CIVIL_REGISTRAR);
     }
     private static void denied(ServerPlayerEntity player) {

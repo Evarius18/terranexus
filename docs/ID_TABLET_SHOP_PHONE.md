@@ -87,9 +87,12 @@ Mehrfamilienhäuser, Mietwohnungen, Hotels/Pensionen, Hotelzimmer und Sonderimmo
 - Käufer erhalten einen personalisierten, servergeprüften Immobilienschlüssel.
 - Vermieter können zielgerichtete oder öffentliche Mietangebote anlegen.
 - Öffentliche Angebote ermöglichen Self-Check-in für Wohnungen und Hotelzimmer.
-- Zimmer und Wohnungen werden als getrennte Freiform-/Quadergrundstücke modelliert. Dadurch
+- Zimmer und Wohnungen werden als getrennte Freiform-/Quadergrundstücke modelliert und können
+  über die Grundstücksakte einer persistenten Mehrfamilienhausakte zugeordnet werden. Dadurch
   besitzen sie eigene Bewohner, Verträge, Schlüssel, Klingelschilder/Briefkästen als normale
   geschützte Interaktionsblöcke und unabhängig verwaltbare Rechte.
+- Flure, Treppenhäuser und andere Gemeinschaftsbereiche werden als eigene Flächen derselben
+  Gebäudeakte geführt und gehören ausdrücklich nicht zu einer einzelnen Wohnung.
 - Beim Vertragsende werden Mieterrechte automatisch entzogen; ausgegebene Schlüssel werden
   dadurch ohne Itemsuche sofort ungültig.
 

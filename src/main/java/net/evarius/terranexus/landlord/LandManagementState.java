@@ -41,7 +41,9 @@ public class LandManagementState extends PersistentState {
             Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("addresses", Map.of()).forGetter(state -> state.addresses),
             Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("property_uses", Map.of()).forGetter(state -> state.propertyUses),
             Codec.unboundedMap(Codec.STRING, AreaEmployment.CODEC).optionalFieldOf("area_employees", Map.of()).forGetter(state -> state.areaEmployees),
-            Codec.unboundedMap(Codec.STRING, ContainerLock.CODEC).optionalFieldOf("container_locks", Map.of()).forGetter(state -> state.containerLocks)
+            Codec.unboundedMap(Codec.STRING, ContainerLock.CODEC).optionalFieldOf("container_locks", Map.of()).forGetter(state -> state.containerLocks),
+            Codec.unboundedMap(Codec.STRING, ResidentialBuilding.CODEC).optionalFieldOf("residential_buildings", Map.of()).forGetter(state -> state.residentialBuildings),
+            Codec.unboundedMap(Codec.STRING, ResidentialUnit.CODEC).optionalFieldOf("residential_units", Map.of()).forGetter(state -> state.residentialUnits)
     ).apply(instance, LandManagementState::new));
     private static final PersistentStateType<LandManagementState> TYPE = new PersistentStateType<>(
             "terranexus_land_management", LandManagementState::new, CODEC, DataFixTypes.LEVEL);
@@ -55,20 +57,25 @@ public class LandManagementState extends PersistentState {
     private final Map<String, String> propertyUses;
     private final Map<String, AreaEmployment> areaEmployees;
     private final Map<String, ContainerLock> containerLocks;
+    private final Map<String, ResidentialBuilding> residentialBuildings;
+    private final Map<String, ResidentialUnit> residentialUnits;
     private List<AdministrativeArea> areaCache;
     private final Map<String, List<AdministrativeArea>> childrenCache = new HashMap<>();
     private boolean runtimeInitialized;
 
     public LandManagementState() {
         this(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(),
-                new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
+                new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(),
+                new HashMap<>());
     }
 
     private LandManagementState(Map<String, LandAccess> access, Map<String, LandSaleOffer> sales,
                                 Map<String, LandLease> leases, Map<String, AdministrativeArea> areas,
                                 Map<String, String> propertyAreas, Map<String, String> addresses,
                                 Map<String, String> propertyUses, Map<String, AreaEmployment> areaEmployees,
-                                Map<String, ContainerLock> containerLocks) {
+                                Map<String, ContainerLock> containerLocks,
+                                Map<String, ResidentialBuilding> residentialBuildings,
+                                Map<String, ResidentialUnit> residentialUnits) {
         this.access = new HashMap<>(access);
         this.sales = new HashMap<>(sales);
         this.leases = new HashMap<>(leases);
@@ -78,6 +85,8 @@ public class LandManagementState extends PersistentState {
         this.propertyUses = new HashMap<>(propertyUses);
         this.areaEmployees = new HashMap<>(areaEmployees);
         this.containerLocks = new HashMap<>(containerLocks);
+        this.residentialBuildings = new HashMap<>(residentialBuildings);
+        this.residentialUnits = new HashMap<>(residentialUnits);
         migrateHierarchy();
     }
 
@@ -206,7 +215,7 @@ public class LandManagementState extends PersistentState {
     }
 
     public boolean mayManageAreaFinances(String areaId, ServerPlayerEntity player) {
-        if (AuthorityState.isTnAdmin(player) || player.hasPermissionLevel(2)) return true;
+        if (AuthorityState.isAdministrator(player) || player.hasPermissionLevel(2)) return true;
         AdministrativeArea area = areas.get(areaId);
         if (area == null || SYSTEM_OWNER_TYPE.equals(area.ownerType())) return false;
         if ("player".equals(area.ownerType())) return area.ownerId().equals(player.getUuidAsString());
@@ -268,15 +277,96 @@ public class LandManagementState extends PersistentState {
         return lease != null && lease.active() && lease.tenantId().equals(player.toString());
     }
     public boolean tenantPermits(String propertyId, UUID player, String permission) {
-        if (!isTenant(propertyId, player)) return false;
+        boolean directTenant = isTenant(propertyId, player);
+        ResidentialUnit currentUnit = residentialUnits.get(propertyId);
+        boolean commonAreaTenant = currentUnit != null && currentUnit.commonArea()
+                && units(currentUnit.buildingId()).stream().filter(unit -> !unit.commonArea())
+                .anyMatch(unit -> isTenant(unit.propertyId(), player));
+        if (!directTenant && !commonAreaTenant) return false;
         var config = ConfigManager.claims();
         return switch (permission) {
             case LandAccess.INTERACT -> config.tenantInteractionAllowed;
             case LandAccess.CONTAINERS -> config.tenantContainerAccess;
             case LandAccess.REDSTONE -> config.tenantRedstoneAccess;
-            case LandAccess.BUILD -> config.tenantBuildingAllowed;
+            case LandAccess.BUILD -> directTenant && config.tenantBuildingAllowed;
             default -> false;
         };
+    }
+
+    public ResidentialBuilding residentialBuilding(String buildingId) {
+        return residentialBuildings.get(buildingId);
+    }
+
+    public List<ResidentialBuilding> residentialBuildings() {
+        return residentialBuildings.values().stream()
+                .sorted(Comparator.comparing(ResidentialBuilding::name, String.CASE_INSENSITIVE_ORDER)).toList();
+    }
+
+    public ResidentialUnit residentialUnit(String propertyId) {
+        return residentialUnits.get(propertyId);
+    }
+
+    public List<ResidentialUnit> units(String buildingId) {
+        return residentialUnits.values().stream().filter(unit -> unit.buildingId().equals(buildingId))
+                .sorted(Comparator.comparing(ResidentialUnit::commonArea)
+                        .thenComparing(ResidentialUnit::name, String.CASE_INSENSITIVE_ORDER)).toList();
+    }
+
+    public ResidentialBuilding createResidentialBuilding(ServerPlayerEntity actor, String name) {
+        String normalized = name == null ? "" : name.trim();
+        if (normalized.isBlank() || normalized.length() > ConfigManager.claims().maximumPropertyNameLength
+                || residentialBuildings.values().stream().anyMatch(value -> value.name().equalsIgnoreCase(normalized)))
+            return null;
+        ResidentialBuilding building = new ResidentialBuilding(UUID.randomUUID().toString(), normalized,
+                actor.getUuidAsString(), System.currentTimeMillis());
+        residentialBuildings.put(building.id(), building);
+        markDirty();
+        return building;
+    }
+
+    public boolean mayManageResidentialBuilding(ServerPlayerEntity actor, String buildingId) {
+        if (LandPermissionService.isSystemAdministrator(actor)) return true;
+        ResidentialBuilding building = residentialBuildings.get(buildingId);
+        if (building == null) return false;
+        if (building.createdBy().equals(actor.getUuidAsString())) return true;
+        for (ResidentialUnit unit : units(buildingId)) {
+            LandProperty property = LandlordState.get(actor.getServer()).get(unit.propertyId());
+            if (LandPermissionService.mayExerciseOwnerRights(actor, property)) return true;
+        }
+        return false;
+    }
+
+    public boolean assignResidentialUnit(ServerPlayerEntity actor, String buildingId, String propertyId,
+                                         String name, boolean commonArea) {
+        ResidentialBuilding building = residentialBuildings.get(buildingId);
+        LandProperty property = LandlordState.get(actor.getServer()).get(propertyId);
+        String normalized = name == null ? "" : name.trim();
+        if (building == null || property == null || residentialUnits.containsKey(propertyId)
+                || !mayManageResidentialBuilding(actor, buildingId)
+                || !LandPermissionService.mayExerciseOwnerRights(actor, property)
+                || normalized.isBlank() || normalized.length() > ConfigManager.claims().maximumPropertyNameLength
+                || units(buildingId).stream().anyMatch(unit -> unit.name().equalsIgnoreCase(normalized))
+                || commonArea && leases.containsKey(propertyId)) return false;
+        residentialUnits.put(propertyId, new ResidentialUnit(propertyId, buildingId, normalized, commonArea));
+        markDirty();
+        return true;
+    }
+
+    public boolean removeResidentialUnit(ServerPlayerEntity actor, String propertyId) {
+        ResidentialUnit unit = residentialUnits.get(propertyId);
+        LandProperty property = LandlordState.get(actor.getServer()).get(propertyId);
+        if (unit == null || !mayManageResidentialBuilding(actor, unit.buildingId())
+                || !LandPermissionService.mayExerciseOwnerRights(actor, property)) return false;
+        residentialUnits.remove(propertyId);
+        markDirty();
+        return true;
+    }
+
+    public boolean removeResidentialBuilding(ServerPlayerEntity actor, String buildingId) {
+        if (!mayManageResidentialBuilding(actor, buildingId) || !units(buildingId).isEmpty()) return false;
+        boolean changed = residentialBuildings.remove(buildingId) != null;
+        if (changed) markDirty();
+        return changed;
     }
     public ContainerLock containerLock(String dimension, net.minecraft.util.math.BlockPos pos) {
         return containerLocks.get(containerKey(dimension, pos.asLong()));
@@ -309,6 +399,7 @@ public class LandManagementState extends PersistentState {
         propertyAreas.remove(propertyId);
         addresses.remove(propertyId);
         propertyUses.remove(propertyId);
+        residentialUnits.remove(propertyId);
         markDirty();
     }
 
@@ -463,6 +554,9 @@ public class LandManagementState extends PersistentState {
         }
         if (propertyAreas.keySet().removeIf(id -> !currentIds.contains(id))) changed = true;
         if (propertyUses.keySet().removeIf(id -> !currentIds.contains(id))) changed = true;
+        if (residentialUnits.entrySet().removeIf(entry -> !currentIds.contains(entry.getKey())
+                || !residentialBuildings.containsKey(entry.getValue().buildingId())
+                || !entry.getKey().equals(entry.getValue().propertyId()))) changed = true;
         if (changed) markDirty();
     }
 

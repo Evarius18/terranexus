@@ -123,6 +123,8 @@ public final class LandlordProtection {
 
     public static boolean isAllowed(ServerPlayerEntity player, World world, BlockPos pos, String permission) {
         if (LandPermissionService.isSystemAdministrator(player)) return true;
+        if (LandAccess.BUILD.equals(permission)
+                && net.evarius.terranexus.identity.AuthorityState.isBuilder(player)) return true;
         if (!protectionEnabled(permission)) return true;
         LandProperty property = propertyAt(world, pos);
         LandManagementState management = LandManagementState.get(player.getServer());

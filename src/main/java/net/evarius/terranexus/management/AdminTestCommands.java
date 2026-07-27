@@ -69,6 +69,7 @@ public final class AdminTestCommands {
         authority.grant(player.getUuid(), AuthorityState.CIVIL_REGISTRAR);
         authority.grant(player.getUuid(), AuthorityState.IMMIGRATION_OFFICER);
         authority.grant(player.getUuid(), AuthorityState.SUPPORTER);
+        authority.grant(player.getUuid(), AuthorityState.WHITELISTER);
         authority.grant(player.getUuid(), AuthorityState.LAND_REGISTRAR);
         authority.grant(player.getUuid(), AuthorityState.LAND_SURVEYOR);
         authority.grant(player.getUuid(), AuthorityState.LAND_CLERK);
@@ -88,6 +89,7 @@ public final class AdminTestCommands {
         authority.revoke(player.getUuid(), AuthorityState.CIVIL_REGISTRAR);
         authority.revoke(player.getUuid(), AuthorityState.IMMIGRATION_OFFICER);
         authority.revoke(player.getUuid(), AuthorityState.SUPPORTER);
+        authority.revoke(player.getUuid(), AuthorityState.WHITELISTER);
         authority.revoke(player.getUuid(), AuthorityState.LAND_REGISTRAR);
         authority.revoke(player.getUuid(), AuthorityState.LAND_SURVEYOR);
         authority.revoke(player.getUuid(), AuthorityState.LAND_CLERK);

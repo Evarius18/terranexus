@@ -16,9 +16,12 @@ import java.util.Map;
 import java.util.UUID;
 
 public class AuthorityState extends PersistentState {
+    public static final String ADMIN = "admin";
     public static final String CIVIL_REGISTRAR = "civil_registrar";
     public static final String IMMIGRATION_OFFICER = "immigration_officer";
     public static final String SUPPORTER = "supporter";
+    public static final String WHITELISTER = "whitelister";
+    public static final String BUILDER = "builder";
     public static final String LAND_REGISTRAR = "land_registrar";
     public static final String LAND_SURVEYOR = "land_surveyor";
     public static final String LAND_CLERK = "land_clerk";
@@ -47,6 +50,10 @@ public class AuthorityState extends PersistentState {
         return roles.getOrDefault(player.toString(), List.of()).contains(role);
     }
 
+    public List<String> roles(UUID player) {
+        return List.copyOf(roles.getOrDefault(player.toString(), List.of()));
+    }
+
     public void grant(UUID player, String role) {
         List<String> assigned = roles.computeIfAbsent(player.toString(), ignored -> new ArrayList<>());
         if (!assigned.contains(role)) assigned.add(role);
@@ -64,11 +71,12 @@ public class AuthorityState extends PersistentState {
     }
 
     public static boolean mayManageIdentity(ServerPlayerEntity player) {
-        if (isTnAdmin(player)) return true;
+        if (isAdministrator(player)) return true;
         AuthorityState state = get(player.getServer());
         return state.has(player.getUuid(), CIVIL_REGISTRAR)
                 || state.has(player.getUuid(), IMMIGRATION_OFFICER)
-                || state.has(player.getUuid(), SUPPORTER);
+                || state.has(player.getUuid(), SUPPORTER)
+                || state.has(player.getUuid(), WHITELISTER);
     }
 
     public static boolean mayManageLand(ServerPlayerEntity player) {
@@ -76,26 +84,26 @@ public class AuthorityState extends PersistentState {
     }
 
     public static boolean mayUseLandOffice(ServerPlayerEntity player) {
-        if (isTnAdmin(player)) return true;
+        if (isAdministrator(player)) return true;
         AuthorityState state=get(player.getServer());UUID id=player.getUuid();
         return state.has(id,LAND_REGISTRAR)||state.has(id,LAND_SURVEYOR)||state.has(id,LAND_CLERK)||state.has(id,LAND_ADMINISTRATOR);
     }
     public static boolean maySurveyLand(ServerPlayerEntity player) {
-        if (isTnAdmin(player)) return true;
+        if (isAdministrator(player)) return true;
         AuthorityState state=get(player.getServer());UUID id=player.getUuid();return state.has(id,LAND_REGISTRAR)||state.has(id,LAND_SURVEYOR)||state.has(id,LAND_ADMINISTRATOR);
     }
     public static boolean mayCreateLand(ServerPlayerEntity player) {
-        if (isTnAdmin(player)) return true;
+        if (isAdministrator(player)) return true;
         AuthorityState state=get(player.getServer());UUID id=player.getUuid();
         return state.has(id,LAND_REGISTRAR)||state.has(id,LAND_SURVEYOR)
                 ||state.has(id,LAND_CLERK)||state.has(id,LAND_ADMINISTRATOR);
     }
     public static boolean mayProcessLandRecords(ServerPlayerEntity player) {
-        if (isTnAdmin(player)) return true;
+        if (isAdministrator(player)) return true;
         AuthorityState state=get(player.getServer());UUID id=player.getUuid();return state.has(id,LAND_REGISTRAR)||state.has(id,LAND_CLERK)||state.has(id,LAND_ADMINISTRATOR);
     }
     public static boolean mayAdministerLand(ServerPlayerEntity player) {
-        if (isTnAdmin(player)) return true;
+        if (isAdministrator(player)) return true;
         AuthorityState state=get(player.getServer());UUID id=player.getUuid();return state.has(id,LAND_REGISTRAR)||state.has(id,LAND_ADMINISTRATOR);
     }
 
@@ -103,16 +111,32 @@ public class AuthorityState extends PersistentState {
         return get(player.getServer()).has(player.getUuid(), TN_ADMIN_TEST);
     }
 
+    public static boolean isAdministrator(ServerPlayerEntity player) {
+        AuthorityState state = get(player.getServer());
+        return state.has(player.getUuid(), ADMIN) || state.has(player.getUuid(), TN_ADMIN_TEST);
+    }
+
+    public static boolean isBuilder(ServerPlayerEntity player) {
+        return get(player.getServer()).has(player.getUuid(), BUILDER) || isAdministrator(player);
+    }
+
     public static boolean isKnownRole(String role) {
-        return CIVIL_REGISTRAR.equals(role) || IMMIGRATION_OFFICER.equals(role) || SUPPORTER.equals(role) || LAND_REGISTRAR.equals(role)
-                || LAND_SURVEYOR.equals(role)||LAND_CLERK.equals(role)||LAND_ADMINISTRATOR.equals(role)||TN_ADMIN_TEST.equals(role);
+        return knownRoles().contains(role);
+    }
+
+    public static List<String> knownRoles() {
+        return List.of(ADMIN, SUPPORTER, WHITELISTER, BUILDER, CIVIL_REGISTRAR, IMMIGRATION_OFFICER,
+                LAND_SURVEYOR, LAND_CLERK, LAND_ADMINISTRATOR, LAND_REGISTRAR, TN_ADMIN_TEST);
     }
 
     public static String roleLabel(String role) {
         return switch (role) {
+            case ADMIN -> "Administrator/in";
             case CIVIL_REGISTRAR -> "Verwaltungs-/Standesamtsbedienstete Person";
             case IMMIGRATION_OFFICER -> "Bedienstete Person der Einreisebehörde";
-            case SUPPORTER -> "Supporter/Whitelister im Einreisedienst";
+            case SUPPORTER -> "Supporter/in";
+            case WHITELISTER -> "Whitelister/in der Einreisebehörde";
+            case BUILDER -> "Builder/in";
             case LAND_REGISTRAR -> "Bedienstete Person der Grundstücksverwaltung";
             case LAND_SURVEYOR -> "Vermessungspersonal des Bauamts";
             case LAND_CLERK -> "Sachbearbeitung des Bauamts";

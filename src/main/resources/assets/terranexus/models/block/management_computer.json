@@ -1,9 +1,9 @@
 ﻿{
     "credit":  "Made with Blockbench",
     "textures":  {
-                     "0":  "terranexus:block/management_computer/rgb_tablet",
+                     "0":  "terranexus:block/management_computer/rgb_sheet",
                      "1":  "terranexus:item/land_survey_tool/tasten",
-                     "particle":  "terranexus:block/management_computer/rgb_tablet"
+                     "particle":  "terranexus:block/management_computer/rgb_sheet"
                  },
     "elements":  [
                      {

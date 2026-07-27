@@ -302,7 +302,7 @@ public class InstitutionState extends PersistentState {
     }
 
     private boolean mayAssign(ServerPlayerEntity actor, String institutionId, InstitutionRole current, InstitutionRole desired) {
-        if (AuthorityState.isTnAdmin(actor)) return desired != InstitutionRole.OWNER;
+        if (AuthorityState.isAdministrator(actor)) return desired != InstitutionRole.OWNER;
         InstitutionEmployee acting = employee(institutionId, actor.getUuid());
         if (acting == null) return false;
         InstitutionRole actorRole = acting.institutionRole();

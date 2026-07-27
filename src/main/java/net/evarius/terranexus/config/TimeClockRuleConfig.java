@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class TimeClockRuleConfig {
+    public boolean enabled = true;
     public String label = "Mindestbesetzung";
     public String description = "Statusregel auf Basis der aktuell eingestempelten Mitarbeiter.";
     public List<String> institutionTypeKeywords = new ArrayList<>();
@@ -20,6 +21,13 @@ public final class TimeClockRuleConfig {
 
     public TimeClockRuleConfig(String label, String description, List<String> institutionTypeKeywords,
                                int defaultThreshold, String comparison, boolean warnWhenUnsatisfied) {
+        this(true, label, description, institutionTypeKeywords, defaultThreshold, comparison, warnWhenUnsatisfied);
+    }
+
+    public TimeClockRuleConfig(boolean enabled, String label, String description,
+                               List<String> institutionTypeKeywords, int defaultThreshold,
+                               String comparison, boolean warnWhenUnsatisfied) {
+        this.enabled = enabled;
         this.label = label;
         this.description = description;
         this.institutionTypeKeywords = new ArrayList<>(institutionTypeKeywords);

@@ -25,8 +25,9 @@ public final class PropertyFinanceScreen {
         LandSaleOffer sale=management.sale(property.id());
         if(sale==null&&commercialManager){button(inventory,actions,10,Items.EMERALD,"Zum Verkauf anbieten","Kaufpreis eingeben",ignored->money(player,"Kaufpreis",price->{showResult(player,LandTradeService.offerSale(player,property.id(),price));openLatest(player,property.id());}));}
         else if(sale!=null){button(inventory,actions,10,Items.EMERALD,"Kaufangebot",EconomyState.format(sale.price()),ignored->{if(LandTradeService.mayManageCommercially(player,LandlordState.get(player.getServer()).get(property.id())))showResult(player,LandTradeService.cancelSale(player,property.id()));else showResult(player,LandTradeService.buy(player,property.id()));openLatest(player,property.id());});}
-        LandLease lease=management.lease(property.id());
-        if(lease==null&&commercialManager){
+        LandLease lease=management.lease(property.id());ResidentialUnit residentialUnit=management.residentialUnit(property.id());boolean commonArea=residentialUnit!=null&&residentialUnit.commonArea();
+        if(commonArea){ManagementHubScreen.display(inventory,12,Items.IRON_DOOR,"Gemeinschaftsbereich","Nicht als einzelne Wohnung vermietbar");}
+        else if(lease==null&&commercialManager){
             button(inventory,actions,12,Items.WRITABLE_BOOK,"Gezielt vermieten","Bestimmten Mieter und Vertragsdaten auswählen",ignored->selectTenant(player,property));
             button(inventory,actions,14,Items.OAK_DOOR,"Öffentlich anbieten","Self-Check-in für Wohnungen und Hotelzimmer",ignored->publicLeaseMoney(player,property));
         }
@@ -36,6 +37,7 @@ public final class PropertyFinanceScreen {
         if(AuthorityState.mayAdministerLand(player))button(inventory,actions,42,Items.MAP,"Verwaltungszuständigkeit",areaLabel(management,property),ignored->LandAdministrationScreen.selectForProperty(player,property));
         if(AuthorityState.mayProcessLandRecords(player))button(inventory,actions,44,Items.OAK_SIGN,"Flächennutzung",management.landUse(property.id()),ignored->LandAdministrationScreen.selectLandUse(player,property));
         if(LandTransferService.mayInitiate(player))button(inventory,actions,46,Items.PLAYER_HEAD,"Eigentümer übertragen","Zustimmungspflichtige Grundbuchänderung",ignored->PropertyScreen.openOwnerSelection(player,property));
+        if(manager)button(inventory,actions,48,Items.BRICKS,"Mehrfamilienhaus","Wohnungen und Gemeinschaftsbereiche zuordnen",ignored->ResidentialBuildingScreen.open(player,property));
         openMenu(player,inventory,actions,"Grundstück · Verträge");
     }
     private static boolean mayManage(ServerPlayerEntity p,LandProperty prop){return LandPermissionService.mayExerciseOwnerRights(p,prop);}
@@ -79,7 +81,7 @@ public final class PropertyFinanceScreen {
     private static void back(ServerPlayerEntity player,LandProperty property){
         if(AuthorityState.mayUseLandOffice(player)){PropertyScreen.open(player);return;}
         if(property!=null&&property.ownerType().equals("institution")
-                &&(AuthorityState.isTnAdmin(player)||InstitutionState.get(player.getServer()).mayManage(property.ownerId(),player.getUuid()))){
+                &&(AuthorityState.isAdministrator(player)||InstitutionState.get(player.getServer()).mayManage(property.ownerId(),player.getUuid()))){
             InstitutionManagementScreen.open(player,property.ownerId());return;
         }
         if(property!=null&&property.ownerType().equals(LandManagementState.AREA_OWNER_TYPE)

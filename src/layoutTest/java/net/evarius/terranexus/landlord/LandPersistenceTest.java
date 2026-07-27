@@ -33,6 +33,21 @@ public final class LandPersistenceTest {
                 "Containerberechtigung wertet Eigentümer oder Freigaben falsch aus");
         require(lock.grant("second").permits("second") && !lock.revoke("trusted").permits("trusted"),
                 "Erteilen oder Entziehen einer Containerberechtigung ist inkonsistent");
+
+        ResidentialBuilding building = new ResidentialBuilding("building", "Haus am Markt", "owner", 123L);
+        var encodedBuilding = ResidentialBuilding.CODEC.encodeStart(JsonOps.INSTANCE, building).getOrThrow();
+        require(building.equals(ResidentialBuilding.CODEC.parse(JsonOps.INSTANCE, encodedBuilding).getOrThrow()),
+                "Mehrfamilienhaus verliert Stammdaten beim Speichern und Laden");
+
+        ResidentialUnit apartment = new ResidentialUnit("property-apartment", "building", "Wohnung 2A", false);
+        ResidentialUnit hallway = new ResidentialUnit("property-hallway", "building", "Treppenhaus", true);
+        var encodedApartment = ResidentialUnit.CODEC.encodeStart(JsonOps.INSTANCE, apartment).getOrThrow();
+        var encodedHallway = ResidentialUnit.CODEC.encodeStart(JsonOps.INSTANCE, hallway).getOrThrow();
+        require(apartment.equals(ResidentialUnit.CODEC.parse(JsonOps.INSTANCE, encodedApartment).getOrThrow()),
+                "Wohnungszuordnung verliert Daten beim Speichern und Laden");
+        require(hallway.equals(ResidentialUnit.CODEC.parse(JsonOps.INSTANCE, encodedHallway).getOrThrow())
+                        && "Gemeinschaftsbereich".equals(hallway.typeLabel()),
+                "Gemeinschaftsbereich verliert seine getrennte Nutzungsart");
     }
 
     private static void require(boolean value, String message) {

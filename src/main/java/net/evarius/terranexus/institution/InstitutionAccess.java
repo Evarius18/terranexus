@@ -8,18 +8,18 @@ public final class InstitutionAccess {
     private InstitutionAccess() {}
 
     public static boolean has(ServerPlayerEntity player, String institutionId, InstitutionPermission permission) {
-        if (AuthorityState.isTnAdmin(player)) return true;
+        if (AuthorityState.isAdministrator(player)) return true;
         InstitutionEmployee employee = InstitutionState.get(player.getServer()).employee(institutionId, player.getUuid());
         return employee != null && employee.institutionRole().permits(permission);
     }
 
     public static boolean mayView(ServerPlayerEntity player, String institutionId) {
-        return AuthorityState.isTnAdmin(player)
+        return AuthorityState.isAdministrator(player)
                 || InstitutionState.get(player.getServer()).employee(institutionId, player.getUuid()) != null;
     }
 
     public static boolean hasBankPermission(ServerPlayerEntity player, InstitutionPermission permission) {
-        if (AuthorityState.isTnAdmin(player)) return true;
+        if (AuthorityState.isAdministrator(player)) return true;
         InstitutionState state = InstitutionState.get(player.getServer());
         for (Institution institution : state.forMember(player.getUuid())) {
             String type = institution.type().toLowerCase(java.util.Locale.ROOT);
@@ -29,7 +29,7 @@ public final class InstitutionAccess {
     }
 
     public static boolean hasCentralBankPermission(ServerPlayerEntity player, InstitutionPermission permission) {
-        if (AuthorityState.isTnAdmin(player)) return true;
+        if (AuthorityState.isAdministrator(player)) return true;
         InstitutionState state = InstitutionState.get(player.getServer());
         for (Institution institution : state.forMember(player.getUuid())) {
             String type = institution.type().toLowerCase(java.util.Locale.ROOT);

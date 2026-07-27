@@ -219,7 +219,8 @@ public final class BankManagementScreen {
             if ((type.contains("bank") || type.contains("finanz"))
                     && InstitutionAccess.has(player, institution.id(), permission)) return institution.id();
         }
-        return AuthorityState.isTnAdmin(player) ? "TNADMIN_TEST" : "";
+        if (AuthorityState.isTnAdmin(player)) return "TNADMIN_TEST";
+        return AuthorityState.isAdministrator(player) ? "ADMIN" : "";
     }
     private static boolean mayView(ServerPlayerEntity player) {
         return InstitutionAccess.hasBankPermission(player, InstitutionPermission.BANK_VIEW_ACCOUNTS)

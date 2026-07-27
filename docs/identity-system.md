@@ -13,8 +13,9 @@ Administrative commands require permission level 2.
 /identity show <player>
 /identity issue <player>
 /identity approve <player>
-/authority grant <player> <civil_registrar|immigration_officer|supporter>
-/authority revoke <player> <civil_registrar|immigration_officer|supporter>
+/authority grant <player> <admin|supporter|whitelister|builder|civil_registrar|immigration_officer|land_surveyor|land_clerk|land_administrator>
+/authority revoke <player> <role>
+/authority list <player>
 ```
 
 Every player can use `/identity` or `/identity me`. A valid issued ID card or the citizen management
@@ -39,7 +40,7 @@ player in the immigration GUI and complete the guided form.
 ## Immigration workflow
 
 New identities start without immigration approval. Only players explicitly assigned the `civil_registrar`,
-`immigration_officer`, or `supporter` role can process them. Operator status alone does not grant access.
+`immigration_officer`, `supporter`, `whitelister`, or `admin` role can process them. Operator status alone does not grant access.
 Operators or the server console are only the bootstrap authority for granting/revoking these roles. Approval must be performed
 by a logged-in officer and stores the officer UUID and timestamp. An ID card cannot be issued or validated
 before approval.
@@ -56,6 +57,11 @@ the same screen. Revoking approval immediately invalidates previously issued car
 
 The placeable, horizontally rotatable administration computer opens the same role-aware GUI on right-click.
 Authorized staff receive the immigration workstation; citizens receive their personal management hub.
+
+`admin` grants the existing administration modules, `whitelister` is the dedicated immigration role and
+`supporter` remains a compatible support role. `builder` only bypasses property build restrictions; it grants no
+owner, container, banking, identity or land-registry rights. `tn_admin_test` remains a separately marked
+development role used by `/tnadmin test-access`.
 
 ## Currency configuration
 

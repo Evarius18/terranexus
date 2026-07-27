@@ -92,12 +92,19 @@ und Kontoprüfungen sind nicht konfigurierbar und bleiben immer verpflichtend.
 - maximale Zahl detailliert gespeicherter Schichten je Mitarbeiter;
 - frei erweiterbare Besetzungs- und Gameplay-Regeln mit Institutionsart, Standardwert und Vergleichsoperator.
 
-`rules` ist eine nach stabilen Regel-IDs gegliederte Map. `institutionTypeKeywords` begrenzt eine Regel auf
+`rules` ist eine nach stabilen Regel-IDs gegliederte Map. Jede Regel kann über `enabled` separat geschaltet werden.
+`institutionTypeKeywords` begrenzt eine Regel auf
 passende Institutionsarten; eine leere Liste gilt für alle. Unterstützte Vergleiche sind `AT_LEAST`,
 `MORE_THAN`, `AT_MOST` und `LESS_THAN`. `warnWhenUnsatisfied` steuert nur die Warnanzeige. Die Bedingung kann
 unabhängig davon über die zentrale Stempeluhr-API von späteren Simulationen abgefragt werden. Der
 institutionsspezifische Wert lässt sich durch berechtigte Mitarbeiter in der Stempeluhr ändern; er wird sicher
 in der Welt gespeichert, während die JSON-Datei den Serverstandard vorgibt.
+
+Die mitgelieferten Regeln `fire`, `medical` und `police` verwenden standardmäßig 3 Feuerwehrleute,
+2 Rettungsdienstmitarbeiter und 4 Polizeibedienstete. Die Feuerregel ist bereits angebunden: Feuer breitet
+sich nur aus, wenn weniger als `fire.defaultThreshold` passende Feuerwehrmitarbeiter eingestempelt sind.
+Deaktivierte oder fehlende Regeln verändern die jeweilige Vanilla-Mechanik nicht. Weitere Systeme können
+dieselbe zentrale `TimeClockService.gameplayRuleActive`-Schnittstelle verwenden.
 
 ### `administration.json`
 

@@ -20,7 +20,7 @@ public final class AdminDesktopScreen {
     public static void open(ServerPlayerEntity player) {
         boolean identity = AuthorityState.mayManageIdentity(player);
         boolean land = AuthorityState.mayUseLandOffice(player);
-        boolean institution = AuthorityState.isTnAdmin(player)
+        boolean institution = AuthorityState.isAdministrator(player)
                 || !InstitutionState.get(player.getServer()).forMember(player.getUuid()).isEmpty();
         boolean bank = InstitutionAccess.hasBankPermission(player, InstitutionPermission.BANK_VIEW_ACCOUNTS);
         boolean centralBank = InstitutionAccess.hasCentralBankPermission(player, InstitutionPermission.CENTRAL_BANK_VIEW);
@@ -33,7 +33,9 @@ public final class AdminDesktopScreen {
         Map<Integer, java.util.function.Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
         String desktopName = ConfigManager.general().serverDisplayName + " Admin-Desktop";
         ManagementHubScreen.display(inventory, 4, Items.COMPARATOR, desktopName,
-                AuthorityState.isTnAdmin(player) ? "TNAdmin-Entwicklungszugriff aktiv" : "Fachmodule entsprechend deiner Rollen");
+                AuthorityState.isTnAdmin(player) ? "TNAdmin-Entwicklungszugriff aktiv"
+                        : AuthorityState.isAdministrator(player) ? "Administrationszugriff aktiv"
+                        : "Fachmodule entsprechend deiner Rollen");
         if (identity) {
             ManagementHubScreen.display(inventory, 19, Items.WRITABLE_BOOK, "Bürger- und Einreiseverwaltung", "Akten anlegen, bearbeiten und freischalten");
             actions.put(19, ignored -> ImmigrationScreen.open(player));

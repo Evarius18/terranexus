@@ -63,7 +63,7 @@ public final class LandlordLeaseScreen {
             String status = lease.active() ? "Aktiv" : "Annahme ausstehend";
             String term = lease.termPayments() <= 0 ? "unbefristet"
                     : lease.paymentsCompleted() + "/" + lease.termPayments() + " Zahlungen";
-            String detail = tenantName(player, lease.tenantId()) + " · " + status + " · "
+            String detail = housingLabel(management, entry.property()) + tenantName(player, lease.tenantId()) + " · " + status + " · "
                     + EconomyState.format(lease.rent()) + " alle " + lease.periodDays() + " Tag(e) · " + term;
             button(inventory, actions, slot++, lease.active() ? Items.LIME_DYE : Items.YELLOW_DYE,
                     entry.property().name(), detail, ignored -> details(player, context, ownerId, entry.property().id(), page));
@@ -137,6 +137,13 @@ public final class LandlordLeaseScreen {
             CitizenIdentity identity = IdentityState.get(player.getServer()).get(UUID.fromString(id));
             return identity == null ? "Unbekannter Bürger" : identity.firstName() + " " + identity.lastName();
         } catch (IllegalArgumentException ignored) { return "Ungültige Bürger-ID"; }
+    }
+
+    private static String housingLabel(LandManagementState management, LandProperty property) {
+        var unit = management.residentialUnit(property.id());
+        if (unit == null) return "";
+        var building = management.residentialBuilding(unit.buildingId());
+        return (building == null ? "Mehrfamilienhaus" : building.name()) + " · " + unit.name() + " · ";
     }
 
     private static String endDate(LandLease lease) {

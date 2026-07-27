@@ -26,7 +26,7 @@ public final class LandPermissionService {
     }
 
     public static boolean isSystemAdministrator(ServerPlayerEntity player) {
-        return player.hasPermissionLevel(2) || AuthorityState.isTnAdmin(player);
+        return player.hasPermissionLevel(2) || AuthorityState.isAdministrator(player);
     }
 
     public static boolean mayExerciseOwnerRights(ServerPlayerEntity player, LandProperty property) {
