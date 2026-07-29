@@ -23,6 +23,7 @@ public final class ManagementGuiAtlas {
     private ManagementGuiAtlas() {}
 
     public static Sprite icon(GuiIcon icon) {
+        if (icon == GuiIcon.PHONE) return icon(GuiIcon.HOME);
         int index = icon.ordinal();
         return new Sprite(ICON_X[index % 4], ICON_Y[index / 4], ICON_WIDTH, ICON_HEIGHT);
     }

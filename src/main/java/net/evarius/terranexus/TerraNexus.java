@@ -20,6 +20,8 @@ import net.evarius.terranexus.management.CustomSearchService;
 import net.evarius.terranexus.shop.ShopService;
 import net.evarius.terranexus.institution.TimeClockService;
 import net.evarius.terranexus.phone.PhoneScreen;
+import net.evarius.terranexus.phone.PhoneGuiService;
+import net.evarius.terranexus.compatibility.rpvoice.RpVoiceCompatibility;
 import net.fabricmc.api.ModInitializer;
 
 import org.slf4j.Logger;
@@ -38,6 +40,8 @@ public class TerraNexus implements ModInitializer {
 
         ModItems.registerModItems();
         ModBlocks.registerModBlocks();
+        RpVoiceCompatibility.initialize();
+        PhoneGuiService.register();
         PhoneScreen.registerBuiltInApps();
         IdentityCommands.register();
         RoleplayNames.register();

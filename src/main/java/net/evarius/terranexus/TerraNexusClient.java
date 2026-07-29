@@ -1,19 +1,25 @@
 package net.evarius.terranexus;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonParseException;
 import net.evarius.terranexus.client.gui.TerraNexusMenuScreen;
 import net.evarius.terranexus.client.gui.TerraNexusSearchScreen;
 import net.evarius.terranexus.client.gui.PhoneMenuScreen;
+import net.evarius.terranexus.client.gui.phone.PhoneCallScreen;
 import net.evarius.terranexus.item.ModItems;
 import net.evarius.terranexus.network.gui.CloseGuiPayload;
 import net.evarius.terranexus.network.gui.OpenGuiPayload;
 import net.evarius.terranexus.network.gui.OpenSearchPayload;
 import net.evarius.terranexus.network.gui.SearchStatusPayload;
 import net.evarius.terranexus.network.UndoSurveyPointPayload;
+import net.evarius.terranexus.network.phone.PhoneStatePayload;
+import net.evarius.terranexus.phone.model.PhoneClientState;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 public final class TerraNexusClient implements ClientModInitializer {
+    private static final Gson GSON = new Gson();
     private boolean attackPressed;
 
     @Override
@@ -43,6 +49,19 @@ public final class TerraNexusClient implements ClientModInitializer {
                             && screen.belongsTo(payload.sessionToken())) screen.closeFromServer();
                     else if (context.client().currentScreen instanceof PhoneMenuScreen phone
                             && phone.belongsTo(payload.sessionToken())) phone.closeFromServer();
+                }));
+        ClientPlayNetworking.registerGlobalReceiver(PhoneStatePayload.ID, (payload, context) ->
+                context.client().execute(() -> {
+                    try {
+                        PhoneClientState state = GSON.fromJson(payload.json(), PhoneClientState.class);
+                        if (state == null) return;
+                        if (context.client().currentScreen instanceof PhoneCallScreen phone)
+                            phone.update(state);
+                        else if (state.available())
+                            context.client().setScreen(new PhoneCallScreen(state));
+                    } catch (JsonParseException exception) {
+                        TerraNexus.LOGGER.warn("Ungültiger Telefonstatus vom Server wurde verworfen", exception);
+                    }
                 }));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             boolean pressed = client.options.attackKey.isPressed();

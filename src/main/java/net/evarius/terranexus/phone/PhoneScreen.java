@@ -17,10 +17,7 @@ public final class PhoneScreen {
     public static void registerBuiltInApps() {
         PhoneAppRegistry.register(new BankPhoneApplication());
         PhoneAppRegistry.register(new RealEstatePhoneApplication());
-        PhoneAppRegistry.register(new PlaceholderPhoneApplication("terranexus:contacts",
-                "Kontakte", "Für das Voice-Addon vorbereitet", Items.NAME_TAG));
-        PhoneAppRegistry.register(new PlaceholderPhoneApplication("terranexus:phone",
-                "Telefon", "Simple Voice Chat · vorbereitet", Items.BELL));
+        PhoneAppRegistry.register(new VoicePhoneApplication());
         PhoneAppRegistry.register(new PlaceholderPhoneApplication("terranexus:messages",
                 "Nachrichten", "Noch nicht verbunden", Items.PAPER));
         PhoneAppRegistry.register(new PlaceholderPhoneApplication("terranexus:companies",
@@ -35,10 +32,11 @@ public final class PhoneScreen {
         ManagementHubScreen.display(inventory, 4, Items.CLOCK, "TN-Handy", "RP-Telefon · Prototyp");
         int slot = 20;
         for (PhoneApplication application : PhoneAppRegistry.applications()) {
+            if (!application.available(player)) continue;
             if (slot >= 35) break;
             ManagementHubScreen.display(inventory, slot, application.icon(),
                     application.title(), application.description());
-            if (application.available(player)) actions.put(slot, ignored -> application.open(player));
+            actions.put(slot, ignored -> application.open(player));
             slot++;
         }
         CustomGuiService.open(player, inventory, actions,

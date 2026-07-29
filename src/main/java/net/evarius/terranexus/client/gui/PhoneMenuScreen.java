@@ -5,11 +5,15 @@ import net.evarius.terranexus.network.gui.GuiActionPayload;
 import net.evarius.terranexus.network.gui.GuiIcon;
 import net.evarius.terranexus.network.gui.GuiMenuElement;
 import net.evarius.terranexus.network.gui.OpenGuiPayload;
+import net.evarius.terranexus.item.ModItems;
+import net.evarius.terranexus.client.gui.phone.PhonePlacement;
+import net.evarius.terranexus.client.gui.phone.PhoneShellRenderer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.Util;
 
 import java.text.SimpleDateFormat;
@@ -20,9 +24,6 @@ import java.util.Locale;
 
 /** Dedicated portrait presentation for server-driven phone apps. */
 public final class PhoneMenuScreen extends Screen {
-    private static final int DESIGN_WIDTH = 236;
-    private static final int DESIGN_HEIGHT = 420;
-    private static final int OPEN_MILLIS = 180;
     private static final int CLOSE_MILLIS = 140;
 
     private String sessionToken;
@@ -35,7 +36,6 @@ public final class PhoneMenuScreen extends Screen {
     private boolean awaitingServer;
     private boolean closing;
     private boolean closeSent;
-    private long openedAt = Util.getMeasuringTimeMs();
     private long closeStartedAt;
     private int scroll;
     private int maximumScroll;
@@ -79,15 +79,7 @@ public final class PhoneMenuScreen extends Screen {
     }
 
     static GuiBounds calculatePhoneBounds(int screenWidth, int screenHeight) {
-        int margin = 10;
-        float scale = Math.min(1.08F, Math.min((screenWidth - margin * 2) / (float) DESIGN_WIDTH,
-                (screenHeight - margin * 2) / (float) DESIGN_HEIGHT));
-        int phoneWidth = Math.max(176, Math.round(DESIGN_WIDTH * scale));
-        int phoneHeight = Math.max(312, Math.round(DESIGN_HEIGHT * scale));
-        phoneWidth = Math.min(phoneWidth, Math.max(1, screenWidth - margin * 2));
-        phoneHeight = Math.min(phoneHeight, Math.max(1, screenHeight - margin * 2));
-        return new GuiBounds((screenWidth - phoneWidth) / 2, (screenHeight - phoneHeight) / 2,
-                phoneWidth, phoneHeight);
+        return PhonePlacement.calculate(screenWidth, screenHeight);
     }
 
     private void buildButtons() {
@@ -136,26 +128,11 @@ public final class PhoneMenuScreen extends Screen {
             sendClose();
             return;
         }
-        float progress = closing
-                ? 1.0F - Math.min(1.0F, (now - closeStartedAt) / (float) CLOSE_MILLIS)
-                : Math.min(1.0F, (now - openedAt) / (float) OPEN_MILLIS);
-        progress = 1.0F - (1.0F - progress) * (1.0F - progress);
-        int slide = Math.round((1.0F - progress) * 18.0F);
-
-        context.fill(0, 0, width, height, 0x42000000);
-        context.getMatrices().pushMatrix();
-        context.getMatrices().translate(0, slide);
-        renderPhone(context, mouseX, mouseY - slide);
-        context.getMatrices().popMatrix();
+        renderPhone(context, mouseX, mouseY);
     }
 
     private void renderPhone(DrawContext context, int mouseX, int mouseY) {
-        context.fill(phone.x(), phone.y() + 8, phone.right(), phone.bottom() - 8, 0xFF05080C);
-        context.fill(phone.x() + 5, phone.y(), phone.right() - 5, phone.bottom(), 0xFF05080C);
-        context.fill(phone.x() + 8, phone.y() + 8, phone.right() - 8, phone.bottom() - 8, 0xFF0D1720);
-        context.fill(phone.x() + 10, phone.y() + 32, phone.right() - 10, phone.bottom() - 18, 0xFF102633);
-        context.fill(phone.x() + phone.width() / 2 - 22, phone.y() + 7,
-                phone.x() + phone.width() / 2 + 22, phone.y() + 11, 0xFF25323A);
+        PhoneShellRenderer.frame(context, phone);
 
         String time = new SimpleDateFormat("HH:mm").format(new Date());
         context.drawText(textRenderer, Text.literal(time), phone.x() + 14, phone.y() + 16, 0xFFDCECF1, false);
@@ -175,8 +152,7 @@ public final class PhoneMenuScreen extends Screen {
         boolean launcher = title.getString().equalsIgnoreCase("TN-Handy");
         if (!launcher) renderInformation(context, mouseX, mouseY);
         for (PhoneButton button : buttons) renderButton(context, button, mouseX, mouseY);
-        context.fill(phone.x() + phone.width() / 2 - 26, phone.bottom() - 11,
-                phone.x() + phone.width() / 2 + 26, phone.bottom() - 8, 0xFF8BA6AD);
+        PhoneShellRenderer.homeIndicator(context, phone);
     }
 
     private void renderInformation(DrawContext context, int mouseX, int mouseY) {
@@ -191,8 +167,7 @@ public final class PhoneMenuScreen extends Screen {
             boolean hovered = new GuiBounds(content.x(), y, content.width(), 30).contains(mouseX, mouseY);
             context.fill(content.x(), y, content.right(), y + 30, hovered ? 0xE01A3B49 : 0xCE122F3C);
             context.fill(content.x(), y, content.x() + 2, y + 30, 0xFF3DBFD0);
-            GuiRenderUtil.sprite(context, ManagementGuiAtlas.icon(element.resolvedIcon()),
-                    content.x() + 7, y + 7, 16, 16);
+            renderIcon(context, element.resolvedIcon(), content.x() + 7, y + 7, 16);
             context.drawText(textRenderer, fit(element.label(), content.width() - 38),
                     content.x() + 29, y + 5, 0xFFEAF7F9, false);
             context.drawText(textRenderer, fit(firstLine(element.tooltip()), content.width() - 38),
@@ -212,13 +187,12 @@ public final class PhoneMenuScreen extends Screen {
         context.fill(bounds.x(), bounds.y(), bounds.right(), bounds.y() + 1, border);
         if (button.launcher()) {
             int iconSize = Math.min(27, bounds.height() - 25);
-            GuiRenderUtil.sprite(context, ManagementGuiAtlas.icon(button.element().resolvedIcon()),
-                    bounds.x() + (bounds.width() - iconSize) / 2, bounds.y() + 9, iconSize, iconSize);
+            renderIcon(context, button.element().resolvedIcon(),
+                    bounds.x() + (bounds.width() - iconSize) / 2, bounds.y() + 9, iconSize);
             context.drawCenteredTextWithShadow(textRenderer, fit(button.element().label(), bounds.width() - 6),
                     bounds.x() + bounds.width() / 2, bounds.bottom() - 16, 0xFFF2FAFC);
         } else {
-            GuiRenderUtil.sprite(context, ManagementGuiAtlas.icon(button.element().resolvedIcon()),
-                    bounds.x() + 9, bounds.y() + 8, 16, 16);
+            renderIcon(context, button.element().resolvedIcon(), bounds.x() + 9, bounds.y() + 8, 16);
             context.drawTextWithShadow(textRenderer, fit(button.element().label(), bounds.width() - 38),
                     bounds.x() + 32, bounds.y() + 12, 0xFFF2FAFC);
         }
@@ -230,6 +204,19 @@ public final class PhoneMenuScreen extends Screen {
                 hovered ? 0xFFE0545D : 0xCC8A3038);
         context.drawCenteredTextWithShadow(textRenderer, Text.literal("×"),
                 closeButton.x() + closeButton.width() / 2, closeButton.y() + 4, 0xFFFFFFFF);
+    }
+
+    private void renderIcon(DrawContext context, GuiIcon icon, int x, int y, int size) {
+        if (icon != GuiIcon.PHONE) {
+            GuiRenderUtil.sprite(context, ManagementGuiAtlas.icon(icon), x, y, size, size);
+            return;
+        }
+        float scale = size / 16.0F;
+        context.getMatrices().pushMatrix();
+        context.getMatrices().translate(x, y);
+        context.getMatrices().scale(scale, scale);
+        context.drawItem(new ItemStack(ModItems.MOBILE_PHONE), 0, 0);
+        context.getMatrices().popMatrix();
     }
 
     @Override
@@ -274,6 +261,16 @@ public final class PhoneMenuScreen extends Screen {
     @Override
     public boolean shouldPause() {
         return false;
+    }
+
+    @Override
+    public void renderBackground(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
+        // Handheld screens intentionally leave the game world untouched.
+    }
+
+    @Override
+    protected void applyBlur(DrawContext context) {
+        // Screen#renderBackground normally applies the in-game blur; the phone explicitly opts out.
     }
 
     private void sendClose() {

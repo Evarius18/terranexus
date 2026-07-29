@@ -60,6 +60,8 @@
   "gui.terranexus.search.minimum_length": "Mindestens %s Zeichen erforderlich.",
   "gui.terranexus.toolbar.more": "Weitere %s/%s",
   "gui.terranexus.toolbar.more.tooltip": "Weitere Aktionen dieser Werkzeugleiste anzeigen"
+  ,"gui.terranexus.phone.title": "TN-Handy · Telefon"
+  ,"gui.terranexus.phone.destination": "Spieler, Kontakt oder Rufnummer"
   ,"gui.terranexus.id.country": "BUNDESREPUBLIK TERRANEXUS"
   ,"gui.terranexus.id.document": "PERSONALAUSWEIS · IDENTITY CARD"
   ,"gui.terranexus.id.photo": "LICHTBILD"

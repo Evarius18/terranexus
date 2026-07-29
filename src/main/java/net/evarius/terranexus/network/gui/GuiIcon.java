@@ -20,13 +20,15 @@ public enum GuiIcon {
     WARNING,
     ADD,
     SHOP,
-    ADMIN;
+    ADMIN,
+    PHONE;
 
     public static GuiIcon fromItem(Item item) {
         String path = Registries.ITEM.getId(item).getPath();
         if (path.equals("citizen_id_card") || path.equals("land_registry_extract")) return DOCUMENT;
         if (path.equals("land_survey_tool")) return LAND;
         if (path.equals("building_authority_tablet") || path.equals("management_tablet")) return ADMIN;
+        if (path.equals("mobile_phone")) return PHONE;
         if (item == Items.ARROW || item == Items.OAK_DOOR) return BACK;
         if (item == Items.PLAYER_HEAD || item == Items.NAME_TAG) return PERSON;
         if (item == Items.GOLD_INGOT || item == Items.GOLD_NUGGET || item == Items.GOLD_BLOCK

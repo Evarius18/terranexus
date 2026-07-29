@@ -20,14 +20,23 @@ public final class PhoneLayoutGeometryTest {
             require(phone.x() >= 0 && phone.y() >= 0
                             && phone.right() <= viewport.width() && phone.bottom() <= viewport.height(),
                     viewport.name() + ": Handy verlässt den Bildschirm");
-            require(Math.abs((phone.x() - (viewport.width() - phone.right()))) <= 1,
-                    viewport.name() + ": Handy ist horizontal nicht zentriert");
-            require(Math.abs((phone.y() - (viewport.height() - phone.bottom()))) <= 1,
-                    viewport.name() + ": Handy ist vertikal nicht zentriert");
+            require(viewport.width() - phone.right() <= 10,
+                    viewport.name() + ": Handy liegt nicht am rechten Rand");
+            require(viewport.height() - phone.bottom() <= 10,
+                    viewport.name() + ": Handy liegt nicht am unteren Rand");
             require(phone.height() > phone.width(),
                     viewport.name() + ": Hochformat ging verloren");
             require(phone.width() >= 176 || viewport.width() < 196,
                     viewport.name() + ": Handy wurde unnötig unlesbar klein");
+            int contentHeight = phone.height() - 128;
+            if (contentHeight < 130) {
+                int usableHeight = contentHeight - 36;
+                int tileHeight = Math.max(24, Math.min(56, (Math.max(48, usableHeight) - 4) / 2));
+                require(tileHeight * 2 + 4 <= usableHeight,
+                        viewport.name() + ": kompakte App-Kacheln kollidieren mit der Zurück-Navigation");
+                require(24 + 4 + 28 <= usableHeight,
+                        viewport.name() + ": kompaktes Wählfeld kollidiert mit der Zurück-Navigation");
+            }
         }
     }
 

@@ -69,5 +69,7 @@
   "gui.terranexus.id.nationality": "Nationality",
   "gui.terranexus.id.gender": "Sex",
   "gui.terranexus.id.birth_place": "Place / country of birth",
-  "gui.terranexus.id.address": "Address"
+  "gui.terranexus.id.address": "Address",
+  "gui.terranexus.phone.title": "TN Phone · Calls",
+  "gui.terranexus.phone.destination": "Player, contact, or number"
 }

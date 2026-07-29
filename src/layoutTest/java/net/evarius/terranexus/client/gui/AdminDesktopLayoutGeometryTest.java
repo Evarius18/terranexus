@@ -31,6 +31,7 @@ public final class AdminDesktopLayoutGeometryTest {
         net.evarius.terranexus.landlord.LandPersistenceTest.run();
         net.evarius.terranexus.shop.ShopPersistenceTest.run();
         PhoneLayoutGeometryTest.run();
+        net.evarius.terranexus.phone.PhoneModelPersistenceTest.run();
         net.evarius.terranexus.institution.InstitutionPersistenceTest.run();
         net.evarius.terranexus.config.TimeClockConfigTest.run();
         net.evarius.terranexus.identity.AuthorityRoleTest.run();
