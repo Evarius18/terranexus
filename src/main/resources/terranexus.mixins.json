@@ -10,7 +10,8 @@
 		"FireProtectionMixin",
 		"FluidProtectionMixin",
 		"HopperContainerLockMixin",
-		"PistonProtectionMixin"
+		"PistonProtectionMixin",
+		"ServerPlayerListNameMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

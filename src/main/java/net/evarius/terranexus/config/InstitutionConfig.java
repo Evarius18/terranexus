@@ -73,6 +73,8 @@ public final class InstitutionConfig {
         result.put("POL", "Polizei");
         result.put("RD", "Rettungsdienst");
         result.put("THW", "Technisches Hilfswerk");
+        result.put("BAU", "Bauamt");
+        result.put("JUSTIZ", "Justiz");
         result.put("OTHER", "Sonstige");
         return result;
     }

@@ -19,6 +19,7 @@ import net.evarius.terranexus.management.CustomGuiService;
 import net.evarius.terranexus.management.CustomSearchService;
 import net.evarius.terranexus.shop.ShopService;
 import net.evarius.terranexus.institution.TimeClockService;
+import net.evarius.terranexus.institution.TabListService;
 import net.evarius.terranexus.phone.PhoneScreen;
 import net.evarius.terranexus.phone.PhoneGuiService;
 import net.evarius.terranexus.compatibility.rpvoice.RpVoiceCompatibility;
@@ -50,6 +51,7 @@ public class TerraNexus implements ModInitializer {
         LandlordProtection.register();
         ShopService.register();
         TimeClockService.register();
+        TabListService.register();
         LandlordScheduler.register();
         LandSurveyEvents.register();
         LandTransferService.register();

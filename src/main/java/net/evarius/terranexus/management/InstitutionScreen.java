@@ -5,7 +5,6 @@ import net.evarius.terranexus.config.ConfigManager;
 import net.evarius.terranexus.identity.AuthorityState;
 import net.evarius.terranexus.institution.Institution;
 import net.evarius.terranexus.institution.InstitutionState;
-import net.evarius.terranexus.institution.TimeClockService;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Items;
 import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
@@ -36,11 +35,6 @@ public final class InstitutionScreen {
         ManagementHubScreen.display(inventory, 4, Items.BRICKS, "Institutionen", visible.size() + " Organisationen · Seite " + (page + 1) + "/" + pages);
         ManagementHubScreen.display(inventory, 8, Items.ARROW, "Zurück", "Zur Verwaltungsübersicht");
         actions.put(8, ignored -> home(player));
-        if (AuthorityState.isAdministrator(player)) {
-            ManagementHubScreen.display(inventory, 6, Items.CLOCK, "Dienstübersicht",
-                    "Feuerwehr, Polizei und Rettungsdienst · unabhängig von der öffentlichen Tablist");
-            actions.put(6, ignored -> dutyOverview(player));
-        }
         if (page > 0) { ManagementHubScreen.display(inventory, 0, Items.ARROW, "Vorherige Seite", "Seite " + page); actions.put(0, ignored -> open(player, page - 1)); }
         if (page + 1 < pages) { ManagementHubScreen.display(inventory, 7, Items.ARROW, "Nächste Seite", "Seite " + (page + 2)); actions.put(7, ignored -> open(player, page + 1)); }
         int slot = 9;
@@ -58,30 +52,6 @@ public final class InstitutionScreen {
                 Text.literal("TerraNexus Institutionen").formatted(Formatting.DARK_AQUA));
     }
 
-    private static void dutyOverview(ServerPlayerEntity player) {
-        if (!AuthorityState.isAdministrator(player)) {
-            denied(player);
-            return;
-        }
-        SimpleInventory inventory = new SimpleInventory(54);
-        Map<Integer, java.util.function.Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
-        ManagementHubScreen.display(inventory, 4, Items.CLOCK, "Aktuelle Dienststärke",
-                "Serverseitige Stempeluhr · nur tatsächlich verbundene Mitarbeiter");
-        int slot = 19;
-        for (Map.Entry<String, String> type : ConfigManager.institutions().organizationTypes.entrySet()) {
-            if (slot > 34) break;
-            int count = TimeClockService.onlineOnDutyForOrganization(player.getServer(), type.getKey());
-            ManagementHubScreen.display(inventory, slot++, count > 0 ? Items.LIME_CONCRETE : Items.RED_CONCRETE,
-                    type.getValue(), count + " Mitarbeiter im Dienst");
-        }
-        ManagementHubScreen.display(inventory, 8, Items.ARROW, "Zurück", "Zur Institutionsübersicht");
-        actions.put(8, ignored -> open(player));
-        ManagementHubScreen.display(inventory, 49, Items.COMPASS, "Aktualisieren",
-                "Aktuelle Dienstzahlen neu laden");
-        actions.put(49, ignored -> dutyOverview(player));
-        CustomGuiService.open(player, inventory, actions,
-                Text.literal("Institutionen · Dienstübersicht").formatted(Formatting.DARK_AQUA));
-    }
 
     private static void createStep(ServerPlayerEntity player, List<String> values, int step) {
         if (!mayCreate(player)) { denied(player); home(player); return; }

@@ -19,13 +19,12 @@ public final class AdminDesktopScreen {
 
     public static void open(ServerPlayerEntity player) {
         boolean identity = AuthorityState.mayManageIdentity(player);
-        boolean land = AuthorityState.mayUseLandOffice(player);
         boolean institution = AuthorityState.isAdministrator(player)
                 || !InstitutionState.get(player.getServer()).forMember(player.getUuid()).isEmpty();
         boolean bank = InstitutionAccess.hasBankPermission(player, InstitutionPermission.BANK_VIEW_ACCOUNTS);
         boolean centralBank = InstitutionAccess.hasCentralBankPermission(player, InstitutionPermission.CENTRAL_BANK_VIEW);
         boolean areaFinance = AreaFinanceScreen.hasManagedArea(player);
-        if (!identity && !land && !institution && !bank && !centralBank && !areaFinance) {
+        if (!identity && !institution && !bank && !centralBank && !areaFinance) {
             player.sendMessage(Text.translatable("message.terranexus.admin_desktop.denied").formatted(Formatting.RED), false);
             return;
         }
@@ -54,18 +53,6 @@ public final class AdminDesktopScreen {
                     Text.translatable("gui.terranexus.admin.institutions"),
                     Text.translatable("gui.terranexus.admin_desktop.institutions.description"));
             actions.put(23, ignored -> InstitutionScreen.open(player));
-        }
-        if (land) {
-            ManagementHubScreen.display(inventory, 25, Items.FILLED_MAP,
-                    Text.translatable("gui.terranexus.admin_desktop.land"),
-                    Text.translatable("gui.terranexus.admin_desktop.land.description"));
-            actions.put(25, ignored -> PropertyScreen.open(player));
-        }
-        if (AuthorityState.mayAdministerLand(player)) {
-            ManagementHubScreen.display(inventory, 31, Items.WRITABLE_BOOK,
-                    Text.translatable("gui.terranexus.admin.audit"),
-                    Text.translatable("gui.terranexus.admin_desktop.audit.description"));
-            actions.put(31, ignored -> LandSearchScreen.audit(player));
         }
         if (centralBank) {
             ManagementHubScreen.display(inventory, 33, Items.BEACON,

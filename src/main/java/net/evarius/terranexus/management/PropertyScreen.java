@@ -45,6 +45,12 @@ public final class PropertyScreen {
 
     private static void open(ServerPlayerEntity player, int requestedPage) {
         if(!AuthorityState.mayUseLandOffice(player)){player.sendMessage(Text.literal("Zugriff verweigert: Bauamtsberechtigung erforderlich.").formatted(Formatting.RED),false);return;}
+        if (!hasBuildingAuthorityTablet(player)) {
+            player.sendMessage(Text.literal("Die Grundstücksverwaltung ist ausschließlich über das Bauamts-Tablet verfügbar.")
+                    .formatted(Formatting.RED), false);
+            player.closeHandledScreen();
+            return;
+        }
         PropertyDrafts.EditDraft draft = PropertyDrafts.edit(player.getUuid());
         if (draft != null) { openEditor(player); return; }
         LandlordState state = LandlordState.get(player.getServer());
@@ -54,8 +60,8 @@ public final class PropertyScreen {
 
         ManagementHubScreen.display(inventory, 4, Items.FILLED_MAP, "Grundstücksverwaltung",
                 "Position: " + player.getBlockX() + ", " + player.getBlockY() + ", " + player.getBlockZ());
-        ManagementHubScreen.display(inventory, 8, Items.ARROW, "Zurück", "Verwaltungsübersicht");
-        actions.put(8, ignored -> AdminDesktopScreen.open(player));
+        ManagementHubScreen.display(inventory, 8, Items.BARRIER, "Schließen", "Bauamts-Tablet schließen");
+        actions.put(8, ignored -> player.closeHandledScreen());
         int pendingTransfers = LandTransferService.pendingFor(player).size();
         ManagementHubScreen.display(inventory, 5, pendingTransfers > 0 ? Items.LIME_DYE : Items.PAPER,
                 "Umschreibungen", pendingTransfers + " offene Vorgänge · neue Übertragung anlegen");
@@ -168,6 +174,9 @@ public final class PropertyScreen {
     private static void beginEdit(ServerPlayerEntity player, LandProperty property) { PropertyDrafts.begin(player.getUuid(), property); preview(player, PropertyDrafts.edit(player.getUuid()).points()); openEditor(player); }
     private static boolean mayEdit(ServerPlayerEntity player, LandProperty property) { return AuthorityState.maySurveyLand(player); }
     private static String dimension(ServerPlayerEntity player) { return player.getWorld().getRegistryKey().getValue().toString(); }
+    private static boolean hasBuildingAuthorityTablet(ServerPlayerEntity player) {
+        return player.getInventory().contains(new net.minecraft.item.ItemStack(ModItems.BUILDING_AUTHORITY_TABLET));
+    }
     private static String type(LandProperty property) { return switch (property.regionType()) { case "chunk" -> "Chunk"; case "cuboid" -> "Quader"; default -> "Freiform"; }; }
 
     private static void finishCuboid(ServerPlayerEntity player, LandlordState state, String dimension) {

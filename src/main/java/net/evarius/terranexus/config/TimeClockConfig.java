@@ -11,11 +11,16 @@ public final class TimeClockConfig {
     public boolean clockOutOnDisconnect = false;
     public int statusRefreshTicks = 40;
     public int maximumSessionsPerEmployee = 128;
+    public boolean showDutyOverviewInPlayerList = true;
+    public List<String> playerListOrganizationTypes = new java.util.ArrayList<>(
+            List.of("FW", "POL", "RD", "BAU", "JUSTIZ"));
     public Map<String, TimeClockRuleConfig> rules = defaultRules();
 
     void validate() {
         statusRefreshTicks = ConfigManager.clamp(statusRefreshTicks, 20, 1_200);
         maximumSessionsPerEmployee = ConfigManager.clamp(maximumSessionsPerEmployee, 1, 2_048);
+        playerListOrganizationTypes = ConfigManager.uniqueText(playerListOrganizationTypes, 16, 24).stream()
+                .map(value -> value.toUpperCase(java.util.Locale.ROOT)).toList();
         LinkedHashMap<String, TimeClockRuleConfig> validated = new LinkedHashMap<>();
         if (rules != null) rules.forEach((id, rule) -> {
             String cleanId = id == null ? "" : id.trim().toLowerCase(java.util.Locale.ROOT)
