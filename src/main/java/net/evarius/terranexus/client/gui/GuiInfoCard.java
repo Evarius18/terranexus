@@ -33,13 +33,13 @@ public final class GuiInfoCard {
                 iconX, iconY, iconSize, iconSize);
         int textX = iconX + iconSize + 7;
         int textWidth = Math.max(8, bounds.right() - textX - 6);
-        Text label = fit(renderer, Text.literal(element.label()), textWidth);
+        Text label = fit(renderer, Text.literal(element.label().getString()), textWidth);
         int labelColor = document ? 0xFF30281D : 0xFFE9F4F7;
         int detailColor = document ? 0xFF66583F : 0xFF78A7B2;
         if (document) context.drawText(renderer, label, textX, bounds.y() + 6, labelColor, false);
         else context.drawTextWithShadow(renderer, label, textX, bounds.y() + 6, labelColor);
-        if (bounds.height() >= 28 && !element.tooltip().isBlank()) {
-            Text detail = fit(renderer, Text.literal(firstLine(element.tooltip())), textWidth);
+        if (bounds.height() >= 28 && !element.tooltip().getString().isBlank()) {
+            Text detail = fit(renderer, Text.literal(firstLine(element.tooltip().getString())), textWidth);
             context.drawText(renderer, detail, textX, bounds.y() + 17, detailColor, false);
         }
     }

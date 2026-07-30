@@ -47,7 +47,7 @@ public final class TerraNexusMenuScreen extends Screen {
     private String layoutIdentity = "";
 
     public TerraNexusMenuScreen(OpenGuiPayload payload) {
-        super(Text.literal(payload.title()));
+        super(payload.title());
         sessionToken = payload.sessionToken();
         elements = payload.elements();
     }
@@ -229,7 +229,7 @@ public final class TerraNexusMenuScreen extends Screen {
             int row = index / columns;
             addActionButton(actions.get(index), new GuiBounds(panel.x() + padding + column * (buttonWidth + gap),
                     startY + row * (buttonHeight + gap), buttonWidth, buttonHeight),
-                    Text.literal(actions.get(index).label()), GuiVisualStyle.ACTION_TILE);
+                    Text.literal(actions.get(index).label().getString()), GuiVisualStyle.ACTION_TILE);
         }
         addCloseButton(new GuiBounds(panel.right() - 28, panel.y() + 8, 20, 20));
     }
@@ -270,7 +270,7 @@ public final class TerraNexusMenuScreen extends Screen {
                 / Math.max(1, actions.size()));
         for (int index = 0; index < actions.size(); index++)
             addActionButton(actions.get(index), new GuiBounds(content.x() + index * (actionWidth + gap),
-                    actionY, actionWidth, actionHeight), Text.literal(actions.get(index).label()),
+                    actionY, actionWidth, actionHeight), Text.literal(actions.get(index).label().getString()),
                     GuiVisualStyle.ACTION_TILE);
     }
 
@@ -290,7 +290,7 @@ public final class TerraNexusMenuScreen extends Screen {
             scrollableGrid.configure(selectable, primary, 64, structuredLayout.minimumCardHeight(), gap);
             for (GuiScrollableGrid.VisibleCell visible : scrollableGrid.visibleCells()) {
                 if (visible.element().id() >= 45)
-                    addActionButton(visible.element(), visible.bounds(), Text.literal(visible.element().label()),
+                    addActionButton(visible.element(), visible.bounds(), Text.literal(visible.element().label().getString()),
                             GuiVisualStyle.GRID_CELL);
                 else
                     addSelectableButton(visible.element(), visible.bounds(), GuiVisualStyle.GRID_CELL);
@@ -363,7 +363,7 @@ public final class TerraNexusMenuScreen extends Screen {
         scrollableGrid.configure(source, area, structuredLayout.minimumCardWidth(),
                 structuredLayout.minimumCardHeight(), gap);
         for (GuiScrollableGrid.VisibleCell visible : scrollableGrid.visibleCells())
-            addActionButton(visible.element(), visible.bounds(), Text.literal(visible.element().label()), style);
+            addActionButton(visible.element(), visible.bounds(), Text.literal(visible.element().label().getString()), style);
     }
 
     private void addHeaderSummary(boolean emphasized) {
@@ -394,7 +394,7 @@ public final class TerraNexusMenuScreen extends Screen {
                 default -> 20;
             };
         }
-        return navigationWeight(element.label());
+        return navigationWeight(element.label().getString());
     }
 
     private static int centralMetricOrder(int id) {
@@ -432,10 +432,10 @@ public final class TerraNexusMenuScreen extends Screen {
         List<GuiBounds> bounds = structuredLayout.toolbar(renderedCount);
         for (int index = 0; index < visible.size(); index++) {
             GuiMenuElement element = visible.get(index);
-            String normalized = element.label().toLowerCase(java.util.Locale.ROOT);
+            String normalized = element.label().getString().toLowerCase(java.util.Locale.ROOT);
             GuiVisualStyle style = normalized.startsWith("zur") ? GuiVisualStyle.NAVIGATION
                     : normalized.contains("suche") ? GuiVisualStyle.SEARCH_FIELD : GuiVisualStyle.TOOLBAR;
-            addActionButton(element, bounds.get(index), Text.literal(element.label()), style);
+            addActionButton(element, bounds.get(index), Text.literal(element.label().getString()), style);
         }
         if (paged) {
             GuiBounds moreBounds = bounds.getLast();
@@ -673,7 +673,7 @@ public final class TerraNexusMenuScreen extends Screen {
 
     private String cardValue(int id) {
         return elements.stream().filter(element -> element.id() == id).findFirst()
-                .map(element -> element.tooltip().isBlank() ? element.label() : element.tooltip())
+                .map(element -> element.tooltip().getString().isBlank() ? element.label().getString() : element.tooltip().getString())
                 .orElse("—");
     }
 
@@ -750,13 +750,13 @@ public final class TerraNexusMenuScreen extends Screen {
 
     private void addActionButton(GuiMenuElement element, GuiBounds bounds, Text label, GuiVisualStyle style) {
         buttons.add(addDrawableChild(new GuiActionButton(element.id(), GuiAction.ACTIVATE_ELEMENT,
-                element.resolvedIcon(), label, element.tooltip(), bounds.x(), bounds.y(), bounds.width(), bounds.height(),
+                element.resolvedIcon(), label, element.tooltip().getString(), bounds.x(), bounds.y(), bounds.width(), bounds.height(),
                 element.enabled(), element.selected(), style, this::performAction)));
     }
 
     private void addSelectableButton(GuiMenuElement element, GuiBounds bounds, GuiVisualStyle style) {
         buttons.add(addDrawableChild(new GuiActionButton(element.id(), GuiAction.ACTIVATE_ELEMENT,
-                element.resolvedIcon(), Text.literal(element.label()), element.tooltip(), bounds.x(), bounds.y(),
+                element.resolvedIcon(), Text.literal(element.label().getString()), element.tooltip().getString(), bounds.x(), bounds.y(),
                 bounds.width(), bounds.height(), true, element.id() == selectedElementId, style,
                 (ignoredAction, id) -> {
                     selectedElementId = id;

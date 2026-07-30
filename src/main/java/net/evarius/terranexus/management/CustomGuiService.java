@@ -58,7 +58,7 @@ public final class CustomGuiService {
                     send(player, session);
                 } catch (RuntimeException exception) {
                     TerraNexus.LOGGER.error("Custom-GUI-Aktualisierung fehlgeschlagen: Spieler={} Titel={}",
-                            player.getUuidAsString(), session.title, exception);
+                            player.getUuidAsString(), session.title.getString(), exception);
                     close(player, session.token);
                 }
             }
@@ -91,7 +91,7 @@ public final class CustomGuiService {
         }
         String token = UUID.randomUUID().toString();
         Session session = new Session(player.getUuid(), token, inventory, Map.copyOf(actions),
-                trim(title.getString(), 160), refresh, refreshTicks, ticks + refreshTicks, closeHandler);
+                title.copy(), refresh, refreshTicks, ticks + refreshTicks, closeHandler);
         Session previous = SESSIONS.put(player.getUuid(), session);
         runCloseHandler(previous);
         send(player, session);
@@ -127,7 +127,7 @@ public final class CustomGuiService {
         try { handler.accept(player); }
         catch (RuntimeException exception) {
             TerraNexus.LOGGER.error("Custom-GUI-Aktion fehlgeschlagen: Spieler={} Element={} Titel={}",
-                    player.getUuidAsString(), payload.elementId(), session.title, exception);
+                    player.getUuidAsString(), payload.elementId(), session.title.getString(), exception);
             runCloseHandler(session);
         }
         if (!SESSIONS.containsKey(player.getUuid())) close(player, session.token);
@@ -155,18 +155,21 @@ public final class CustomGuiService {
             ItemStack stack = inventory.getStack(slot);
             if (stack.isEmpty()) continue;
             LoreComponent lore = stack.get(DataComponentTypes.LORE);
-            String tooltip = lore == null ? "" : lore.lines().stream().map(Text::getString)
-                    .reduce((left, right) -> left + "\n" + right).orElse("");
+            Text tooltip = lore == null ? Text.empty() : joinLines(lore.lines());
             boolean selected = stack.isOf(Items.LIME_CONCRETE) || stack.isOf(Items.LIME_STAINED_GLASS_PANE);
             result.add(new GuiMenuElement(slot, GuiIcon.fromItem(stack.getItem()).name(),
-                    trim(stack.getName().getString(), 128), trim(tooltip, 512), actions.containsKey(slot), selected));
+                    stack.getName().copy(), tooltip, actions.containsKey(slot), selected));
         }
         return List.copyOf(result);
     }
 
-    private static String trim(String value, int maximum) {
-        if (value == null) return "";
-        return value.length() <= maximum ? value : value.substring(0, maximum);
+    private static Text joinLines(List<Text> lines) {
+        var result = Text.empty();
+        for (int index = 0; index < lines.size(); index++) {
+            if (index > 0) result.append("\n");
+            result.append(lines.get(index));
+        }
+        return result;
     }
 
     private static void runCloseHandler(Session session) {
@@ -174,7 +177,7 @@ public final class CustomGuiService {
         try { session.closeHandler.run(); }
         catch (RuntimeException exception) {
             TerraNexus.LOGGER.error("Custom-GUI-Schließaktion fehlgeschlagen: Spieler={} Titel={}",
-                    session.playerId, session.title, exception);
+                    session.playerId, session.title.getString(), exception);
         }
     }
 
@@ -183,14 +186,14 @@ public final class CustomGuiService {
         private final String token;
         private final SimpleInventory inventory;
         private final Map<Integer, Consumer<PlayerEntity>> actions;
-        private final String title;
+        private final Text title;
         private final Runnable refresh;
         private final int refreshTicks;
         private final Runnable closeHandler;
         private long nextRefreshTick;
 
         private Session(UUID playerId, String token, SimpleInventory inventory,
-                        Map<Integer, Consumer<PlayerEntity>> actions, String title,
+                        Map<Integer, Consumer<PlayerEntity>> actions, Text title,
                         Runnable refresh, int refreshTicks, long nextRefreshTick, Runnable closeHandler) {
             this.playerId = playerId;
             this.token = token;

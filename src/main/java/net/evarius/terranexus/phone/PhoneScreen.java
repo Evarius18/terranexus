@@ -19,17 +19,22 @@ public final class PhoneScreen {
         PhoneAppRegistry.register(new RealEstatePhoneApplication());
         PhoneAppRegistry.register(new VoicePhoneApplication());
         PhoneAppRegistry.register(new PlaceholderPhoneApplication("terranexus:messages",
-                "Nachrichten", "Noch nicht verbunden", Items.PAPER));
+                Text.translatable("gui.terranexus.phone.messages"),
+                Text.translatable("gui.terranexus.phone.not_connected"), Items.PAPER));
         PhoneAppRegistry.register(new PlaceholderPhoneApplication("terranexus:companies",
-                "Firmen", "Institutionsverwaltung · vorbereitet", Items.BRICKS));
+                Text.translatable("gui.terranexus.phone.companies"),
+                Text.translatable("gui.terranexus.phone.companies.description"), Items.BRICKS));
         PhoneAppRegistry.register(new PlaceholderPhoneApplication("terranexus:authorities",
-                "Behörden", "Behördendienste · vorbereitet", Items.IRON_BLOCK));
+                Text.translatable("gui.terranexus.phone.authorities"),
+                Text.translatable("gui.terranexus.phone.authorities.description"), Items.IRON_BLOCK));
     }
 
     public static void open(ServerPlayerEntity player) {
         SimpleInventory inventory = new SimpleInventory(54);
         Map<Integer, java.util.function.Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
-        ManagementHubScreen.display(inventory, 4, Items.CLOCK, "TN-Handy", "RP-Telefon · Prototyp");
+        ManagementHubScreen.display(inventory, 4, Items.CLOCK,
+                Text.translatable("gui.terranexus.phone.launcher.title"),
+                Text.translatable("gui.terranexus.phone.launcher.subtitle"));
         int slot = 20;
         for (PhoneApplication application : PhoneAppRegistry.applications()) {
             if (!application.available(player)) continue;
@@ -40,6 +45,6 @@ public final class PhoneScreen {
             slot++;
         }
         CustomGuiService.open(player, inventory, actions,
-                Text.literal("TN-Handy").formatted(Formatting.DARK_AQUA));
+                Text.translatable("gui.terranexus.phone.launcher.title").formatted(Formatting.DARK_AQUA));
     }
 }

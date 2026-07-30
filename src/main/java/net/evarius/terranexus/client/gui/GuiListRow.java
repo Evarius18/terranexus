@@ -24,7 +24,7 @@ public final class GuiListRow extends ClickableWidget {
 
     public GuiListRow(GuiMenuElement element, GuiPageType pageType, int rowIndex, boolean selected,
                       GuiBounds bounds, IntConsumer selectHandler, IntConsumer activateHandler) {
-        super(bounds.x(), bounds.y(), bounds.width(), bounds.height(), Text.literal(element.label()));
+        super(bounds.x(), bounds.y(), bounds.width(), bounds.height(), Text.literal(element.label().getString()));
         this.element = element;
         this.pageType = pageType;
         this.rowIndex = rowIndex;
@@ -33,7 +33,7 @@ public final class GuiListRow extends ClickableWidget {
         this.activateHandler = activateHandler;
     }
 
-    public String tooltipText() { return element.tooltip(); }
+    public String tooltipText() { return element.tooltip().getString(); }
     public GuiMenuElement element() { return element; }
     public void setSelected(boolean selected) { this.selected = selected; }
 
@@ -77,7 +77,7 @@ public final class GuiListRow extends ClickableWidget {
     }
 
     private void renderBankColumns(DrawContext context, net.minecraft.client.font.TextRenderer renderer, int startX) {
-        String[] details = element.tooltip().split(SEPARATOR, 4);
+        String[] details = element.tooltip().getString().split(SEPARATOR, 4);
         int right = getX() + width - 7;
         int nameWidth = Math.max(20, Math.round(width * 0.36F));
         int numberX = startX + nameWidth;
@@ -87,7 +87,7 @@ public final class GuiListRow extends ClickableWidget {
         String balance = accountNumberVisible ? details[1] : details.length > 0 ? details[0] : "—";
         String type = accountNumberVisible ? details[2] : details.length > 1 ? details[1] : "KONTO";
         String statusValue = accountNumberVisible ? details[3] : details.length > 2 ? details[2] : "AKTIV";
-        draw(context, renderer, element.label(), startX, nameWidth - 6, 0xFFE8F2F5);
+        draw(context, renderer, element.label().getString(), startX, nameWidth - 6, 0xFFE8F2F5);
         draw(context, renderer, number, numberX,
                 Math.max(12, balanceX - numberX - 6), 0xFF91B5BF);
         Text status = Text.literal(statusValue);
@@ -103,8 +103,8 @@ public final class GuiListRow extends ClickableWidget {
     }
 
     private void renderAuditColumns(DrawContext context, net.minecraft.client.font.TextRenderer renderer, int startX) {
-        String[] label = element.label().split(SEPARATOR, 2);
-        String[] details = element.tooltip().split(SEPARATOR, 4);
+        String[] label = element.label().getString().split(SEPARATOR, 2);
+        String[] details = element.tooltip().getString().split(SEPARATOR, 4);
         int timeWidth = Math.max(46, Math.round(width * 0.17F));
         int actionWidth = Math.max(38, Math.round(width * 0.15F));
         int sourceWidth = Math.max(48, Math.round(width * 0.25F));
@@ -127,9 +127,9 @@ public final class GuiListRow extends ClickableWidget {
     private void renderGenericColumns(DrawContext context, net.minecraft.client.font.TextRenderer renderer, int startX) {
         boolean document = pageType == GuiPageType.DOCUMENT_LIST;
         int labelWidth = Math.max(28, Math.round(width * 0.40F));
-        draw(context, renderer, element.label(), startX, labelWidth - 6,
+        draw(context, renderer, element.label().getString(), startX, labelWidth - 6,
                 document ? 0xFF2D261C : 0xFFE8F2F5);
-        draw(context, renderer, GuiInfoCard.firstLine(element.tooltip()), startX + labelWidth,
+        draw(context, renderer, GuiInfoCard.firstLine(element.tooltip().getString()), startX + labelWidth,
                 Math.max(12, getX() + width - startX - labelWidth - 7),
                 document ? 0xFF665840 : 0xFF91AAB2);
     }

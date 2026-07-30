@@ -1,6 +1,7 @@
 package net.evarius.terranexus.client.gui;
 
 import net.evarius.terranexus.network.gui.GuiMenuElement;
+import net.minecraft.text.Text;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,7 +55,7 @@ final class StructuredGuiLayoutGeometryTest {
 
     private static void validateProfiles() {
         List<GuiMenuElement> bank = List.of(element(4, false), element(1, true),
-                new GuiMenuElement(8, "BACK", "Zurück", "", true, false), element(9, true));
+                new GuiMenuElement(8, "BACK", Text.literal("Zurück"), Text.empty(), true, false), element(9, true));
         GuiPageModel bankModel = GuiPageModel.create("Bank · Kontenübersicht", bank);
         require(bankModel.type() == GuiPageType.BANK_ACCOUNTS, "bank page profile not detected");
         require(bankModel.elements(GuiElementRole.LIST_ROW).size() == 1, "bank row not classified");
@@ -97,7 +98,8 @@ final class StructuredGuiLayoutGeometryTest {
     }
 
     private static GuiMenuElement element(int id, boolean enabled) {
-        return new GuiMenuElement(id, "DOCUMENT", "Element " + id, "Detail " + id, enabled, false);
+        return new GuiMenuElement(id, "DOCUMENT", Text.literal("Element " + id),
+                Text.literal("Detail " + id), enabled, false);
     }
 
     private static boolean inside(GuiBounds outer, GuiBounds inner) {

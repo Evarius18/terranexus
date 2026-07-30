@@ -26,25 +26,33 @@ public final class ManagementHubScreen {
     public static void open(ServerPlayerEntity player) {
         CitizenIdentity identity = IdentityState.get(player.getServer()).get(player.getUuid());
         if (identity == null) {
-            player.sendMessage(Text.literal("Noch keine Bürgerakte vorhanden. Bitte an die Einreisebehörde wenden.").formatted(Formatting.YELLOW), false);
+            player.sendMessage(Text.translatable("message.terranexus.management.identity_missing")
+                    .formatted(Formatting.YELLOW), false);
             return;
         }
         SimpleInventory inventory = new SimpleInventory(54);
         Map<Integer, java.util.function.Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
         display(inventory, 4, Items.NAME_TAG, identity.firstName() + " " + identity.lastName(), identity.citizenNumber());
 
-        display(inventory, 20, Items.WRITABLE_BOOK, "Bürgerverwaltung", "Bürgerakte und Einreiseverwaltung");
+        display(inventory, 20, Items.WRITABLE_BOOK,
+                Text.translatable("gui.terranexus.management.citizens"),
+                Text.translatable("gui.terranexus.management.citizens.description"));
         actions.put(20, ignored -> {
             if (mayManage(player)) ImmigrationScreen.open(player); else IdentityScreen.open(player, identity);
         });
-        display(inventory, 22, Items.GOLD_INGOT, "Bank und Zahlungen",
-                "Kontostand: " + EconomyState.format(EconomyState.get(player.getServer()).balance(player.getUuid())));
+        display(inventory, 22, Items.GOLD_INGOT,
+                Text.translatable("gui.terranexus.management.bank"),
+                Text.translatable("gui.terranexus.management.balance",
+                        EconomyState.format(EconomyState.get(player.getServer()).balance(player.getUuid()))));
         actions.put(22, ignored -> EconomyScreen.open(player));
-        display(inventory, 24, Items.BRICKS, "Institutionen", "Firmen, Behörden, Vereine und Gruppen");
+        display(inventory, 24, Items.BRICKS,
+                Text.translatable("gui.terranexus.admin.institutions"),
+                Text.translatable("gui.terranexus.management.institutions.description"));
         actions.put(24, ignored -> InstitutionScreen.open(player));
 
         CustomGuiService.open(player, inventory, actions,
-                Text.literal(ConfigManager.general().serverDisplayName + " Verwaltung").formatted(Formatting.DARK_AQUA));
+                Text.translatable("gui.terranexus.management.title", ConfigManager.general().serverDisplayName)
+                        .formatted(Formatting.DARK_AQUA));
     }
 
     private static boolean mayManage(ServerPlayerEntity player) {
@@ -52,9 +60,13 @@ public final class ManagementHubScreen {
     }
 
     public static void display(SimpleInventory inventory, int slot, Item item, String name, String detail) {
+        display(inventory, slot, item, Text.literal(name), Text.literal(detail));
+    }
+
+    public static void display(SimpleInventory inventory, int slot, Item item, Text name, Text detail) {
         ItemStack stack = new ItemStack(item);
-        stack.set(DataComponentTypes.CUSTOM_NAME, Text.literal(name).formatted(Formatting.AQUA));
-        stack.set(DataComponentTypes.LORE, new LoreComponent(List.of(Text.literal(detail).formatted(Formatting.GRAY))));
+        stack.set(DataComponentTypes.CUSTOM_NAME, name.copy().formatted(Formatting.AQUA));
+        stack.set(DataComponentTypes.LORE, new LoreComponent(List.of(detail.copy().formatted(Formatting.GRAY))));
         inventory.setStack(slot, stack);
     }
 }

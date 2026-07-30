@@ -1,7 +1,12 @@
 package net.evarius.terranexus.client.gui.phone;
 
 import net.evarius.terranexus.client.gui.GuiBounds;
+import net.evarius.terranexus.client.gui.GuiRenderUtil;
+import net.evarius.terranexus.client.gui.ManagementGuiAtlas;
+import net.evarius.terranexus.item.ModItems;
+import net.evarius.terranexus.network.gui.GuiIcon;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.item.ItemStack;
 
 /** Shared TerraNexus phone chrome; intentionally contains no full-screen rendering. */
 public final class PhoneShellRenderer {
@@ -19,5 +24,18 @@ public final class PhoneShellRenderer {
     public static void homeIndicator(DrawContext context, GuiBounds phone) {
         context.fill(phone.x() + phone.width() / 2 - 26, phone.bottom() - 11,
                 phone.x() + phone.width() / 2 + 26, phone.bottom() - 8, 0xFF8BA6AD);
+    }
+
+    public static void icon(DrawContext context, GuiIcon icon, int x, int y, int size) {
+        if (icon != GuiIcon.PHONE) {
+            GuiRenderUtil.sprite(context, ManagementGuiAtlas.icon(icon), x, y, size, size);
+            return;
+        }
+        float scale = size / 16.0F;
+        context.getMatrices().pushMatrix();
+        context.getMatrices().translate(x, y);
+        context.getMatrices().scale(scale, scale);
+        context.drawItem(new ItemStack(ModItems.MOBILE_PHONE), 0, 0);
+        context.getMatrices().popMatrix();
     }
 }

@@ -1,6 +1,5 @@
 package net.evarius.terranexus.item.custom;
 
-import net.evarius.terranexus.block.ModBlocks;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.EquipmentSlot;
@@ -20,7 +19,6 @@ public class ChiselItem extends Item {
             Map.of(
                     Blocks.STONE, Blocks.STONE_BRICKS,
                     Blocks.END_STONE, Blocks.END_STONE_BRICKS,
-                    Blocks.OAK_LOG, ModBlocks.PINK_GARNET_BLOCK,
                     Blocks.GOLD_BLOCK, Blocks.NETHERITE_BLOCK
             );
 

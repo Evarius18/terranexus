@@ -57,7 +57,9 @@ public final class AdminDesktopLayout {
     }
 
     public static boolean applies(String title) {
-        return title != null && title.endsWith("Admin-Desktop");
+        if (title == null) return false;
+        String normalized = title.toLowerCase(java.util.Locale.ROOT);
+        return normalized.endsWith("admin-desktop") || normalized.endsWith("admin desktop");
     }
 
     public static AdminDesktopLayout calculate(int screenWidth, int screenHeight,
@@ -131,7 +133,7 @@ public final class AdminDesktopLayout {
             case 35 -> "gui.terranexus.admin.area_finance";
             default -> null;
         };
-        return key == null ? Text.literal(element.label()) : Text.translatable(key);
+        return key == null ? Text.literal(element.label().getString()) : Text.translatable(key);
     }
 
     private static void placeCenteredRow(Map<Integer, GuiBounds> target, List<Integer> ids,

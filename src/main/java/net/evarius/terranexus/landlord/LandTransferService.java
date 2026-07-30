@@ -11,6 +11,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.ClickEvent;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
@@ -44,6 +45,12 @@ public final class LandTransferService {
 
     public static boolean mayInitiate(ServerPlayerEntity player) {
         return LandPermissionService.mayTransferProperty(player);
+    }
+
+    public static LandTransferRequest request(MinecraftServer server, String requestId) {
+        LandTransferState state = LandTransferState.get(server);
+        state.purgeExpired(oldestAllowedRequestTime());
+        return state.get(requestId);
     }
 
     public static Result request(ServerPlayerEntity actor, String propertyId, String targetType, String targetId) {
@@ -265,11 +272,11 @@ public final class LandTransferService {
 
     private static void notifyRequiredApprovers(MinecraftServer server, LandProperty property, LandTransferRequest request) {
         if (request.oldOwnerType().equals("player") && !request.ownerApproved())
-            notifyPlayer(server, request.oldOwnerId(), "Zustimmung zur Übertragung von „" + property.name()
-                    + "“ erforderlich. Öffne deinen Grundbuchauszug.");
+            notifyConsentRequired(server, request.oldOwnerId(),
+                    Text.translatable("message.terranexus.transfer.owner_consent_required", property.name()));
         if (request.newOwnerType().equals("player") && !request.recipientApproved())
-            notifyPlayer(server, request.newOwnerId(), "Dir soll „" + property.name()
-                    + "“ übertragen werden. Öffne deinen Grundbuchauszug und stimme zu.");
+            notifyConsentRequired(server, request.newOwnerId(),
+                    Text.translatable("message.terranexus.transfer.recipient_consent_required", property.name()));
         if (request.oldOwnerType().equals("institution") && !request.institutionApproved()) {
             for (var employee : InstitutionState.get(server).employees(request.oldOwnerId()))
                 if (employee.institutionRole().permits(InstitutionPermission.MANAGE_PROPERTY))
@@ -309,9 +316,20 @@ public final class LandTransferService {
     }
 
     private static void notifyPlayer(MinecraftServer server, String playerId, String message) {
+        notifyPlayer(server, playerId, Text.literal(message));
+    }
+
+    private static void notifyConsentRequired(MinecraftServer server, String playerId, Text message) {
+        Text action = Text.translatable("message.terranexus.transfer.open_review")
+                .styled(style -> style.withColor(Formatting.AQUA).withUnderline(true)
+                        .withClickEvent(new ClickEvent.RunCommand("/uebertragungen")));
+        notifyPlayer(server, playerId, message.copy().append(" ").append(action));
+    }
+
+    private static void notifyPlayer(MinecraftServer server, String playerId, Text message) {
         try {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(UUID.fromString(playerId));
-            if (player != null) player.sendMessage(Text.literal(message).formatted(Formatting.GOLD), false);
+            if (player != null) player.sendMessage(message.copy().formatted(Formatting.GOLD), false);
         } catch (IllegalArgumentException ignored) {}
     }
 

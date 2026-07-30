@@ -28,17 +28,17 @@ public final class GuiDetailPanel {
                 bounds.x() + 8, contentY, iconSize, iconSize);
         int textX = bounds.x() + iconSize + 15;
         int textWidth = Math.max(12, bounds.right() - textX - 8);
-        context.drawTextWithShadow(renderer, GuiInfoCard.fit(renderer, Text.literal(selected.label()), textWidth),
+        context.drawTextWithShadow(renderer, GuiInfoCard.fit(renderer, Text.literal(selected.label().getString()), textWidth),
                 textX, contentY + 2, 0xFFF0F6F8);
 
         Text badge = selected.enabled() ? Text.translatable("gui.terranexus.status.action")
                 : Text.translatable("gui.terranexus.status.information");
         GuiStatusBadge.render(context, renderer, textX, contentY + 14, badge,
-                GuiStatusBadge.infer(selected.tooltip(), selected.enabled(), selected.selected()));
+                GuiStatusBadge.infer(selected.tooltip().getString(), selected.enabled(), selected.selected()));
 
         int detailsY = contentY + iconSize + 9;
         int availableHeight = Math.max(0, bounds.bottom() - detailsY - (selected.enabled() ? 27 : 7));
-        List<OrderedText> lines = renderer.wrapLines(Text.literal(selected.tooltip()), Math.max(20, bounds.width() - 16));
+        List<OrderedText> lines = renderer.wrapLines(Text.literal(selected.tooltip().getString()), Math.max(20, bounds.width() - 16));
         int maximumLines = availableHeight / 10;
         for (int index = 0; index < Math.min(maximumLines, lines.size()); index++)
             context.drawText(renderer, lines.get(index), bounds.x() + 8, detailsY + index * 10, 0xFF9BB4BC, false);

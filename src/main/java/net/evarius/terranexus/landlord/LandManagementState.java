@@ -338,16 +338,29 @@ public class LandManagementState extends PersistentState {
 
     public boolean assignResidentialUnit(ServerPlayerEntity actor, String buildingId, String propertyId,
                                          String name, boolean commonArea) {
+        return assignResidentialUnit(actor, buildingId, propertyId, name, commonArea, List.of(name));
+    }
+
+    public boolean assignResidentialUnit(ServerPlayerEntity actor, String buildingId, String propertyId,
+                                         String name, boolean commonArea, List<String> pathSegments) {
         ResidentialBuilding building = residentialBuildings.get(buildingId);
         LandProperty property = LandlordState.get(actor.getServer()).get(propertyId);
         String normalized = name == null ? "" : name.trim();
+        List<String> normalizedPath = pathSegments == null ? List.of() : pathSegments.stream()
+                .map(value -> value == null ? "" : value.trim()).filter(value -> !value.isBlank())
+                .limit(8).toList();
         if (building == null || property == null || residentialUnits.containsKey(propertyId)
                 || !mayManageResidentialBuilding(actor, buildingId)
                 || !LandPermissionService.mayExerciseOwnerRights(actor, property)
                 || normalized.isBlank() || normalized.length() > ConfigManager.claims().maximumPropertyNameLength
-                || units(buildingId).stream().anyMatch(unit -> unit.name().equalsIgnoreCase(normalized))
+                || normalizedPath.isEmpty()
+                || normalizedPath.stream().anyMatch(value ->
+                        value.length() > ConfigManager.claims().maximumPropertyNameLength)
+                || units(buildingId).stream().anyMatch(unit ->
+                        unit.pathLabel().equalsIgnoreCase(String.join(" · ", normalizedPath)))
                 || commonArea && leases.containsKey(propertyId)) return false;
-        residentialUnits.put(propertyId, new ResidentialUnit(propertyId, buildingId, normalized, commonArea));
+        residentialUnits.put(propertyId,
+                new ResidentialUnit(propertyId, buildingId, normalized, commonArea, normalizedPath));
         markDirty();
         return true;
     }

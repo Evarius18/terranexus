@@ -10,14 +10,13 @@ import net.minecraft.registry.Registry;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
-public class ModItemGroups {
-    public static final ItemGroup PINK_GARNET_ITEMS_GROUP = Registry.register(Registries.ITEM_GROUP,
-            Identifier.of(TerraNexus.MOD_ID, "pink_garnet_items"),
-            FabricItemGroup.builder().icon(() -> new ItemStack(ModItems.PINK_GARNET))
-                    .displayName(Text.translatable("itemgroup.terranexus.pink_garnet_items"))
+public final class ModItemGroups {
+    public static final ItemGroup TERRANEXUS_ITEMS_GROUP = Registry.register(Registries.ITEM_GROUP,
+            Identifier.of(TerraNexus.MOD_ID, "items"),
+            FabricItemGroup.builder().icon(() -> new ItemStack(ModItems.MANAGEMENT_TABLET))
+                    .displayName(Text.translatable("itemgroup.terranexus.items"))
                     .entries((displayContext, entries) -> {
-                        entries.add(ModItems.PINK_GARNET);
-                        entries.add(ModItems.RAW_PINK_GARNET);
+                        entries.add(ModItems.CITIZEN_ID_CARD);
                         entries.add(ModItems.MANAGEMENT_TABLET);
                         entries.add(ModItems.BUILDING_AUTHORITY_TABLET);
                         entries.add(ModItems.LAND_SURVEY_TOOL);
@@ -27,15 +26,16 @@ public class ModItemGroups {
                         entries.add(ModItems.PROPERTY_KEY);
                     }).build());
 
-    public static final ItemGroup PINK_GARNET_BLOCKS_GROUP = Registry.register(Registries.ITEM_GROUP,
-            Identifier.of(TerraNexus.MOD_ID, "pink_garnet_blocks"),
-            FabricItemGroup.builder().icon(() -> new ItemStack(ModBlocks.PINK_GARNET_BLOCK))
-                    .displayName(Text.translatable("itemgroup.terranexus.pink_garnet_blocks"))
+    public static final ItemGroup TERRANEXUS_BLOCKS_GROUP = Registry.register(Registries.ITEM_GROUP,
+            Identifier.of(TerraNexus.MOD_ID, "blocks"),
+            FabricItemGroup.builder().icon(() -> new ItemStack(ModBlocks.MANAGEMENT_COMPUTER))
+                    .displayName(Text.translatable("itemgroup.terranexus.blocks"))
                     .entries((displayContext, entries) -> {
-                        entries.add(ModBlocks.PINK_GARNET_BLOCK);
-                        entries.add(ModBlocks.RAW_PINK_GARNET_BLOCK);
+                        entries.add(ModBlocks.MANAGEMENT_COMPUTER);
                         entries.add(ModBlocks.TIME_CLOCK_TERMINAL);
                     }).build());
+
+    private ModItemGroups() {}
 
     public static void registerItemGroups() {
         TerraNexus.LOGGER.info("Registering Item Groups for " + TerraNexus.MOD_ID);

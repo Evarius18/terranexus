@@ -4,6 +4,10 @@ import net.evarius.terranexus.identity.AuthorityState;
 import net.evarius.terranexus.config.ConfigManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 
+import java.util.LinkedHashSet;
+import java.util.Locale;
+import java.util.Set;
+
 public final class InstitutionAccess {
     private InstitutionAccess() {}
 
@@ -39,5 +43,21 @@ public final class InstitutionAccess {
                     && has(player, institution.id(), permission)) return true;
         }
         return false;
+    }
+
+    public static Set<String> rpVoiceMembershipKeys(ServerPlayerEntity player) {
+        LinkedHashSet<String> keys = new LinkedHashSet<>();
+        for (Institution institution : InstitutionState.get(player.getServer()).forMember(player.getUuid())) {
+            keys.add(institution.id());
+            keys.add(institution.name());
+            keys.add(institution.type());
+            String searchable = (institution.id() + " " + institution.name() + " " + institution.type())
+                    .toLowerCase(Locale.ROOT);
+            ConfigManager.institutions().emergencyOrganizationMappings.forEach((key, matchers) -> {
+                if (matchers.stream().map(value -> value.toLowerCase(Locale.ROOT))
+                        .anyMatch(searchable::contains)) keys.add(key);
+            });
+        }
+        return Set.copyOf(keys);
     }
 }

@@ -25,8 +25,8 @@ import java.util.function.Consumer;
 /** Mobile entry point for the existing land sale and lease services. */
 public final class RealEstatePhoneApplication implements PhoneApplication {
     @Override public String id() { return "terranexus:real_estate"; }
-    @Override public String title() { return "Immobilien"; }
-    @Override public String description() { return "Kaufen, mieten und verwalten"; }
+    @Override public Text title() { return Text.translatable("gui.terranexus.phone.real_estate"); }
+    @Override public Text description() { return Text.translatable("gui.terranexus.phone.real_estate.description"); }
     @Override public Item icon() { return Items.OAK_DOOR; }
 
     @Override

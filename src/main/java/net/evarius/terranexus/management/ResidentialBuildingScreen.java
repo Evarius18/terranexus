@@ -107,7 +107,8 @@ public final class ResidentialBuildingScreen {
 
     private static void unitName(ServerPlayerEntity player, LandProperty property,
                                  ResidentialBuilding building, boolean commonArea) {
-        input(player, commonArea ? "Name des Gemeinschaftsbereichs" : "Wohnungsbezeichnung", value -> {
+        input(player, commonArea ? "Pfad des Gemeinschaftsbereichs (z.B. Haus A / Flur 1)"
+                : "Untergliederung (z.B. Haus A / Flur 1 / Wohnung 7)", value -> {
             LandManagementState state = LandManagementState.get(player.getServer());
             LandProperty current = latest(player, property.id());
             if (current == null) {
@@ -115,8 +116,10 @@ public final class ResidentialBuildingScreen {
                 PropertyScreen.open(player);
                 return;
             }
+            List<String> path = parseUnitPath(value);
+            String name = path.isEmpty() ? "" : path.getLast();
             if (!mayManage(player, current) || !state.assignResidentialUnit(
-                    player, building.id(), current.id(), value, commonArea)) {
+                    player, building.id(), current.id(), name, commonArea, path)) {
                 error(player, commonArea && state.lease(current.id()) != null
                         ? "Ein vermietetes Grundstück kann kein Gemeinschaftsbereich werden."
                         : "Zuordnung fehlgeschlagen. Namen, Rechte und bestehende Zuordnung prüfen.");
@@ -134,7 +137,7 @@ public final class ResidentialBuildingScreen {
         SimpleInventory inventory = new SimpleInventory(54);
         Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
         display(inventory, 4, unit.commonArea() ? Items.IRON_DOOR : Items.OAK_DOOR,
-                building.name(), unit.typeLabel() + " · " + unit.name());
+                building.name(), unit.typeLabel() + " · " + unit.pathLabel());
         LandLease lease = state.lease(property.id());
         display(inventory, 20, lease == null ? Items.GRAY_DYE : lease.active() ? Items.LIME_DYE : Items.YELLOW_DYE,
                 "Mietstatus", unit.commonArea() ? "Nicht einzeln vermietbar"
@@ -184,14 +187,21 @@ public final class ResidentialBuildingScreen {
                     : lease == null ? "frei" : lease.active() ? "aktiv vermietet" : "Angebot offen");
             if (property != null && mayManage(player, property))
                 button(inventory, actions, slot++, unit.commonArea() ? Items.IRON_DOOR : Items.OAK_DOOR,
-                        unit.name(), detail, ignored -> open(player, property));
-            else display(inventory, slot++, unit.commonArea() ? Items.IRON_DOOR : Items.OAK_DOOR, unit.name(), detail);
+                        unit.pathLabel(), detail, ignored -> open(player, property));
+            else display(inventory, slot++, unit.commonArea() ? Items.IRON_DOOR : Items.OAK_DOOR,
+                    unit.pathLabel(), detail);
         }
         menu(player, inventory, actions, "Wohnungsverwaltung · Einheiten");
     }
 
     private static LandProperty latest(ServerPlayerEntity player, String propertyId) {
         return LandlordState.get(player.getServer()).get(propertyId);
+    }
+
+    private static List<String> parseUnitPath(String value) {
+        if (value == null) return List.of();
+        return java.util.Arrays.stream(value.split("[/>]"))
+                .map(String::trim).filter(segment -> !segment.isBlank()).limit(8).toList();
     }
     private static boolean mayManage(ServerPlayerEntity player, LandProperty property) {
         return LandPermissionService.mayExerciseOwnerRights(player, property);

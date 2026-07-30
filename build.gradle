@@ -22,6 +22,8 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	// Optional at runtime: compile the guarded RP-VCA adapter against its public API only.
+	compileOnly files("../rp-voice-additions/build/devlibs/rp-vca-1.0.0-dev.jar")
 	
 }
 
@@ -31,6 +33,87 @@ processResources {
 
 	filesMatching("fabric.mod.json") {
 		expand "version": version
+	}
+
+	// Blockbench keeps the supplied source models byte-for-byte intact. Minecraft's
+	// model loader only understands axis/angle rotations, so normalize the few
+	// single-axis Euler rotations in the generated resources, never in the sources.
+	doLast {
+		def modelPaths = [
+			"assets/terranexus/models/block/management_computer.json",
+			"assets/terranexus/models/item/mobile_phone.json"
+		]
+		def jsonSlurper = new groovy.json.JsonSlurper()
+		modelPaths.each { modelPath ->
+			def modelFile = new File(destinationDir, modelPath)
+			if (!modelFile.isFile()) {
+				return
+			}
+			def model = jsonSlurper.parse(modelFile)
+			def changed = false
+			def textureRoot = modelPath.contains("/block/")
+				? "terranexus:block/management_computer/"
+				: "terranexus:item/mobile_phone/"
+			model.textures?.replaceAll { key, value ->
+				if (value in ["rgb_tablet", "tasten"]) {
+					changed = true
+					return textureRoot + value
+				}
+				value
+			}
+			model.elements?.each { element ->
+				def rotation = element.rotation
+				if (rotation instanceof Map && !rotation.containsKey("axis")) {
+					def axes = ["x", "y", "z"].findAll {
+						rotation[it] instanceof Number && rotation[it].doubleValue() != 0.0d
+					}
+					if (axes.size() == 1) {
+						def axis = axes.first()
+						def angle = rotation[axis].doubleValue()
+						if (axis == "x" && Math.abs(angle) == 90.0d) {
+							def origin = rotation.origin.collect { (it as Number).doubleValue() }
+							def points = []
+							[element.from[0], element.to[0]].each { x ->
+								[element.from[1], element.to[1]].each { y ->
+									[element.from[2], element.to[2]].each { z ->
+										def sign = angle > 0 ? 1.0d : -1.0d
+										points << [
+											(x as Number).doubleValue(),
+											origin[1] - sign * ((z as Number).doubleValue() - origin[2]),
+											origin[2] + sign * ((y as Number).doubleValue() - origin[1])
+										]
+									}
+								}
+							}
+							element.from = (0..2).collect { coordinate -> points.collect { it[coordinate] }.min() }
+							element.to = (0..2).collect { coordinate -> points.collect { it[coordinate] }.max() }
+							def directions = angle > 0
+								? [north: "up", up: "south", south: "down", down: "north", east: "east", west: "west"]
+								: [north: "down", down: "south", south: "up", up: "north", east: "east", west: "west"]
+							def rotatedFaces = [:]
+							element.faces.each { direction, face ->
+								if (face.cullface) face.cullface = directions[face.cullface] ?: face.cullface
+								rotatedFaces[directions[direction] ?: direction] = face
+							}
+							element.faces = rotatedFaces
+							element.remove("rotation")
+						} else {
+							while (angle > 45.0d) angle -= 180.0d
+							while (angle < -45.0d) angle += 180.0d
+							element.rotation = [
+								angle: angle,
+								axis: axis,
+								origin: rotation.origin
+							]
+						}
+						changed = true
+					}
+				}
+			}
+			if (changed) {
+				modelFile.setText(groovy.json.JsonOutput.toJson(model), "UTF-8")
+			}
+		}
 	}
 }
 

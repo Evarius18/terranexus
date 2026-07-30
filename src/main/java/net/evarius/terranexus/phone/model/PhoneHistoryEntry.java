@@ -1,16 +1,17 @@
 package net.evarius.terranexus.phone.model;
 
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
-
-public record PhoneHistoryEntry(long timestamp, String peer, String number, String direction,
+/** Immutable transport view mapped from RP-VCA's public CallHistoryEntryView. */
+public record PhoneHistoryEntry(String id, long timestamp, String peer, String number, String direction,
                                 String outcome, long durationSeconds) {
-    public static final Codec<PhoneHistoryEntry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Codec.LONG.fieldOf("timestamp").forGetter(PhoneHistoryEntry::timestamp),
-            Codec.STRING.fieldOf("peer").forGetter(PhoneHistoryEntry::peer),
-            Codec.STRING.fieldOf("number").forGetter(PhoneHistoryEntry::number),
-            Codec.STRING.fieldOf("direction").forGetter(PhoneHistoryEntry::direction),
-            Codec.STRING.fieldOf("outcome").forGetter(PhoneHistoryEntry::outcome),
-            Codec.LONG.optionalFieldOf("duration_seconds", 0L).forGetter(PhoneHistoryEntry::durationSeconds)
-    ).apply(instance, PhoneHistoryEntry::new));
+    public PhoneHistoryEntry {
+        id = safe(id);
+        peer = safe(peer);
+        number = safe(number);
+        direction = safe(direction);
+        outcome = safe(outcome);
+    }
+
+    private static String safe(String value) {
+        return value == null ? "" : value;
+    }
 }

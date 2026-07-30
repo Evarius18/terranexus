@@ -1,149 +1,86 @@
 package net.evarius.terranexus.compatibility.rpvoice;
 
-import net.evarius.terranexus.TerraNexus;
+import com.evarius.rpvca.api.CallMutationResult;
+import com.evarius.rpvca.api.PhoneApi;
+import com.evarius.rpvca.api.PhoneStatusView;
+import com.evarius.rpvca.api.RpVcaApi;
+import net.evarius.terranexus.config.ConfigManager;
 import net.evarius.terranexus.phone.model.EmergencyNumber;
 import net.evarius.terranexus.phone.model.PhoneAction;
+import net.evarius.terranexus.phone.model.PhoneActionResult;
 import net.evarius.terranexus.phone.model.PhoneCallState;
 import net.evarius.terranexus.phone.model.PhoneContact;
+import net.evarius.terranexus.phone.model.PhoneHistoryEntry;
 import net.evarius.terranexus.phone.model.PhoneSnapshot;
 import net.minecraft.server.network.ServerPlayerEntity;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
-/**
- * Reflection-only bridge. Its construction is guarded by FabricLoader before this class is loaded,
- * therefore TerraNexus has no linkage-time dependency on RP Voice Additions.
- */
+/** Direct, compile-only adapter to RP-VCA's public API. The class is loaded only after a mod check. */
 public final class RpVoicePhoneProvider implements PhoneFeatureProvider {
-    private static final String SERVICES_CLASS = "com.evarius.rpvca.RpVoiceServices";
-    private final Method servicesGet;
-    private final Method servicesPhones;
-    private final Method servicesConfigs;
-    private volatile boolean healthy = true;
-
-    private RpVoicePhoneProvider(Method servicesGet, Method servicesPhones, Method servicesConfigs) {
-        this.servicesGet = servicesGet;
-        this.servicesPhones = servicesPhones;
-        this.servicesConfigs = servicesConfigs;
-    }
-
     static PhoneFeatureProvider create() {
-        try {
-            Class<?> services = Class.forName(SERVICES_CLASS, false, RpVoicePhoneProvider.class.getClassLoader());
-            PhoneFeatureProvider result = new RpVoicePhoneProvider(
-                    services.getMethod("get"), services.getMethod("phones"), services.getMethod("configs"));
-            TerraNexus.LOGGER.info("Optionale RP-Voice-Telefonintegration aktiviert");
-            return result;
-        } catch (ReflectiveOperationException | LinkageError exception) {
-            TerraNexus.LOGGER.error("RP Voice Additions wurde erkannt, besitzt aber keine kompatible öffentliche Telefon-API", exception);
-            return new NoopPhoneProvider();
-        }
+        return new RpVoicePhoneProvider();
     }
 
     @Override public boolean installed() { return true; }
-    @Override public boolean healthy() { return healthy; }
+    @Override public boolean healthy() { return true; }
 
     @Override
     public PhoneSnapshot snapshot(ServerPlayerEntity player) {
-        if (!healthy) return PhoneSnapshot.unavailable();
-        try {
-            Object services = servicesGet.invoke(null);
-            if (services == null) return PhoneSnapshot.unavailable();
-            Object phones = servicesPhones.invoke(services);
-            Object view = phones.getClass().getMethod("clientView", ServerPlayerEntity.class).invoke(phones, player);
-            Class<?> type = view.getClass();
-            @SuppressWarnings("unchecked")
-            Map<Object, Object> contactMap = (Map<Object, Object>) type.getMethod("contacts").invoke(view);
-            List<PhoneContact> contacts = new ArrayList<>();
-            for (Map.Entry<Object, Object> entry : contactMap.entrySet()) {
-                if (contacts.size() >= 256) break;
-                contacts.add(new PhoneContact(limit(entry.getKey(), 80), limit(entry.getValue(), 64)));
-            }
-            contacts.sort(Comparator.comparing(PhoneContact::name, String.CASE_INSENSITIVE_ORDER));
-            return new PhoneSnapshot(true,
-                    PhoneCallState.parse(string(type.getMethod("state").invoke(view))),
-                    limit(type.getMethod("peer").invoke(view), 80),
-                    limit(type.getMethod("number").invoke(view), 64),
-                    (boolean) type.getMethod("speaker").invoke(view),
-                    (boolean) type.getMethod("coverage").invoke(view),
-                    limit(type.getMethod("notice").invoke(view), 160),
-                    contacts, emergencyNumbers(services));
-        } catch (InvocationTargetException exception) {
-            TerraNexus.LOGGER.warn("RP-Voice-Telefonstatus konnte vorübergehend nicht gelesen werden", exception.getCause());
-            return PhoneSnapshot.unavailable();
-        } catch (ReflectiveOperationException | LinkageError exception) {
-            fail(exception);
-            return PhoneSnapshot.unavailable();
-        }
+        PhoneApi api = RpVcaApi.getPhoneService().orElse(null);
+        if (api == null) return PhoneSnapshot.unavailable();
+        PhoneStatusView status = api.getStatus(player);
+        List<PhoneContact> contacts = api.getContacts(player).entrySet().stream()
+                .sorted(Map.Entry.comparingByKey(String.CASE_INSENSITIVE_ORDER))
+                .map(entry -> new PhoneContact(entry.getKey(), entry.getValue())).toList();
+        List<EmergencyNumber> emergency = api.getEmergencyNumbers().stream()
+                .map(entry -> new EmergencyNumber(entry.displayName(), entry.number())).toList();
+        List<PhoneHistoryEntry> history = api.getCallHistory(player).stream()
+                .limit(ConfigManager.phone().historyLimit)
+                .map(entry -> new PhoneHistoryEntry(entry.entryId().toString(), entry.startedAt(),
+                        entry.remoteDisplayName(), entry.remoteNumber(), entry.direction().name(),
+                        entry.status().name(), entry.durationSeconds())).toList();
+        return new PhoneSnapshot(true, PhoneCallState.parse(status.state()),
+                status.callId() == null ? "" : status.callId().toString(),
+                status.peer(), status.peerNumber(), status.savedContact(), status.number(),
+                status.speaker(), status.coverage(), status.notice(),
+                contacts, emergency, history);
     }
 
     @Override
-    public boolean execute(ServerPlayerEntity player, PhoneAction action, String value) {
-        if (!healthy || action == null) return false;
+    public PhoneActionResult execute(ServerPlayerEntity player, PhoneAction action,
+                                     String value, String secondaryValue) {
+        PhoneApi api = RpVcaApi.getPhoneService().orElse(null);
+        if (api == null || action == null) return PhoneActionResult.rejected("Telefonservice nicht verfügbar.");
         try {
-            Object services = servicesGet.invoke(null);
-            if (services == null) return false;
-            Object phones = servicesPhones.invoke(services);
-            String methodName = switch (action) {
-                case CALL -> "call";
-                case ANSWER -> "answer";
-                case DECLINE -> "decline";
-                case HANGUP -> "hangup";
-                case TOGGLE_SPEAKER -> "toggleSpeaker";
-                default -> null;
+            return switch (action) {
+                case ALLOCATE_NUMBER -> result(api.allocateNumber(player).successful());
+                case UPSERT_CONTACT -> result(api.upsertContact(player, value, secondaryValue).successful());
+                case REMOVE_CONTACT -> result(api.removeContact(player, value).successful());
+                case REMOVE_HISTORY_ENTRY -> result(api.removeHistoryEntry(player, UUID.fromString(value)).successful());
+                case CLEAR_OWN_HISTORY -> result(api.clearOwnCallHistory(player).successful());
+                case CLEAR_HISTORY -> result(api.clearCallHistory(player, UUID.fromString(value)).successful());
+                case CLEAR_ALL_HISTORIES -> result(api.clearAllCallHistories(player).successful());
+                case CALL -> result(api.startCall(player, value).successful());
+                case ANSWER -> result(api.acceptCall(player, UUID.fromString(value)).successful());
+                case DECLINE -> result(api.declineCall(player, UUID.fromString(value)).successful());
+                case HANGUP -> result(api.hangup(player));
+                case TOGGLE_SPEAKER -> {
+                    api.toggleSpeaker(player);
+                    yield PhoneActionResult.accepted("");
+                }
+                default -> PhoneActionResult.rejected("Ungültige Telefonaktion.");
             };
-            if (methodName == null) return false;
-            Method method = action == PhoneAction.CALL
-                    ? phones.getClass().getMethod(methodName, ServerPlayerEntity.class, String.class)
-                    : phones.getClass().getMethod(methodName, ServerPlayerEntity.class);
-            Object result = action == PhoneAction.CALL
-                    ? method.invoke(phones, player, value)
-                    : method.invoke(phones, player);
-            // toggleSpeaker returns the resulting state, not an operation-success flag.
-            return action == PhoneAction.TOGGLE_SPEAKER || Boolean.TRUE.equals(result);
-        } catch (InvocationTargetException exception) {
-            TerraNexus.LOGGER.warn("RP-Voice-Telefonaktion {} wurde abgelehnt", action, exception.getCause());
-            return false;
-        } catch (ReflectiveOperationException | LinkageError exception) {
-            fail(exception);
-            return false;
+        } catch (IllegalArgumentException exception) {
+            return PhoneActionResult.rejected("Ungültige Anfrage.");
         }
     }
 
-    private List<EmergencyNumber> emergencyNumbers(Object services) throws ReflectiveOperationException {
-        Object configs = servicesConfigs.invoke(services);
-        Object emergency = configs.getClass().getMethod("emergency").invoke(configs);
-        Field enabled = emergency.getClass().getField("enabled");
-        if (!enabled.getBoolean(emergency)) return List.of();
-        Field numbers = emergency.getClass().getField("numbers");
-        if (!(numbers.get(emergency) instanceof Iterable<?> entries)) return List.of();
-        List<EmergencyNumber> result = new ArrayList<>();
-        for (Object entry : entries) {
-            if (entry == null || result.size() >= 64) continue;
-            String number = limit(entry.getClass().getField("number").get(entry), 64);
-            String label = limit(entry.getClass().getField("displayName").get(entry), 80);
-            if (!number.isBlank()) result.add(new EmergencyNumber(label, number));
-        }
-        return List.copyOf(result);
-    }
-
-    private void fail(Throwable exception) {
-        healthy = false;
-        TerraNexus.LOGGER.error("RP-Voice-Telefonintegration wurde nach einem API-Fehler sicher deaktiviert", exception);
-    }
-
-    private static String string(Object value) {
-        return value == null ? "" : value.toString();
-    }
-
-    private static String limit(Object value, int maximum) {
-        String text = string(value).trim();
-        return text.length() <= maximum ? text : text.substring(0, maximum);
+    private static PhoneActionResult result(boolean successful) {
+        return successful ? PhoneActionResult.accepted("")
+                : PhoneActionResult.rejected("Aktion wurde vom Telefonservice abgelehnt.");
     }
 }

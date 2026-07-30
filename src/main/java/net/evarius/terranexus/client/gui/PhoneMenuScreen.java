@@ -2,10 +2,8 @@ package net.evarius.terranexus.client.gui;
 
 import net.evarius.terranexus.network.gui.GuiAction;
 import net.evarius.terranexus.network.gui.GuiActionPayload;
-import net.evarius.terranexus.network.gui.GuiIcon;
 import net.evarius.terranexus.network.gui.GuiMenuElement;
 import net.evarius.terranexus.network.gui.OpenGuiPayload;
-import net.evarius.terranexus.item.ModItems;
 import net.evarius.terranexus.client.gui.phone.PhonePlacement;
 import net.evarius.terranexus.client.gui.phone.PhoneShellRenderer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -13,7 +11,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
-import net.minecraft.item.ItemStack;
+import net.minecraft.text.TranslatableTextContent;
 import net.minecraft.util.Util;
 
 import java.text.SimpleDateFormat;
@@ -41,13 +39,17 @@ public final class PhoneMenuScreen extends Screen {
     private int maximumScroll;
 
     public PhoneMenuScreen(OpenGuiPayload payload) {
-        super(Text.literal(payload.title()));
+        super(payload.title());
         sessionToken = payload.sessionToken();
         elements = payload.elements();
     }
 
-    public static boolean applies(String title) {
-        return title != null && title.toLowerCase(Locale.ROOT).startsWith("tn-handy");
+    public static boolean applies(Text title) {
+        if (title == null) return false;
+        if (title.getContent() instanceof TranslatableTextContent translated
+                && translated.getKey().startsWith("gui.terranexus.phone.")) return true;
+        String rendered = title.getString().toLowerCase(Locale.ROOT);
+        return rendered.startsWith("tn-handy") || rendered.startsWith("tn phone");
     }
 
     public boolean belongsTo(String token) {
@@ -83,7 +85,7 @@ public final class PhoneMenuScreen extends Screen {
     }
 
     private void buildButtons() {
-        boolean launcher = title.getString().equalsIgnoreCase("TN-Handy");
+        boolean launcher = isLauncher();
         List<GuiMenuElement> actions = elements.stream()
                 .filter(element -> element.id() != 4)
                 .filter(element -> !isNavigation(element))
@@ -142,14 +144,15 @@ public final class PhoneMenuScreen extends Screen {
 
         GuiMenuElement header = elements.stream().filter(element -> element.id() == 4 && !element.enabled())
                 .findFirst().orElse(null);
-        String heading = header == null ? title.getString().replace("TN-Handy · ", "") : header.label();
-        String subtitle = header == null ? "TerraNexus Mobile" : firstLine(header.tooltip());
+        String heading = header == null ? title.getString().replace("TN-Handy · ", "") : header.label().getString();
+        String subtitle = header == null ? Text.translatable("gui.terranexus.phone.launcher.subtitle").getString()
+                : firstLine(header.tooltip().getString());
         context.drawText(textRenderer, fit(heading, phone.width() - 48),
                 phone.x() + 15, phone.y() + 42, 0xFFF2FAFC, false);
         context.drawText(textRenderer, fit(subtitle, phone.width() - 30),
                 phone.x() + 15, phone.y() + 55, 0xFF72A9B6, false);
 
-        boolean launcher = title.getString().equalsIgnoreCase("TN-Handy");
+        boolean launcher = isLauncher();
         if (!launcher) renderInformation(context, mouseX, mouseY);
         for (PhoneButton button : buttons) renderButton(context, button, mouseX, mouseY);
         PhoneShellRenderer.homeIndicator(context, phone);
@@ -167,10 +170,10 @@ public final class PhoneMenuScreen extends Screen {
             boolean hovered = new GuiBounds(content.x(), y, content.width(), 30).contains(mouseX, mouseY);
             context.fill(content.x(), y, content.right(), y + 30, hovered ? 0xE01A3B49 : 0xCE122F3C);
             context.fill(content.x(), y, content.x() + 2, y + 30, 0xFF3DBFD0);
-            renderIcon(context, element.resolvedIcon(), content.x() + 7, y + 7, 16);
-            context.drawText(textRenderer, fit(element.label(), content.width() - 38),
+            PhoneShellRenderer.icon(context, element.resolvedIcon(), content.x() + 7, y + 7, 16);
+            context.drawText(textRenderer, fit(element.label().getString(), content.width() - 38),
                     content.x() + 29, y + 5, 0xFFEAF7F9, false);
-            context.drawText(textRenderer, fit(firstLine(element.tooltip()), content.width() - 38),
+            context.drawText(textRenderer, fit(firstLine(element.tooltip().getString()), content.width() - 38),
                     content.x() + 29, y + 17, 0xFF87ACB4, false);
             y += 34;
         }
@@ -187,13 +190,13 @@ public final class PhoneMenuScreen extends Screen {
         context.fill(bounds.x(), bounds.y(), bounds.right(), bounds.y() + 1, border);
         if (button.launcher()) {
             int iconSize = Math.min(27, bounds.height() - 25);
-            renderIcon(context, button.element().resolvedIcon(),
+            PhoneShellRenderer.icon(context, button.element().resolvedIcon(),
                     bounds.x() + (bounds.width() - iconSize) / 2, bounds.y() + 9, iconSize);
-            context.drawCenteredTextWithShadow(textRenderer, fit(button.element().label(), bounds.width() - 6),
+            context.drawCenteredTextWithShadow(textRenderer, fit(button.element().label().getString(), bounds.width() - 6),
                     bounds.x() + bounds.width() / 2, bounds.bottom() - 16, 0xFFF2FAFC);
         } else {
-            renderIcon(context, button.element().resolvedIcon(), bounds.x() + 9, bounds.y() + 8, 16);
-            context.drawTextWithShadow(textRenderer, fit(button.element().label(), bounds.width() - 38),
+            PhoneShellRenderer.icon(context, button.element().resolvedIcon(), bounds.x() + 9, bounds.y() + 8, 16);
+            context.drawTextWithShadow(textRenderer, fit(button.element().label().getString(), bounds.width() - 38),
                     bounds.x() + 32, bounds.y() + 12, 0xFFF2FAFC);
         }
     }
@@ -206,21 +209,12 @@ public final class PhoneMenuScreen extends Screen {
                 closeButton.x() + closeButton.width() / 2, closeButton.y() + 4, 0xFFFFFFFF);
     }
 
-    private void renderIcon(DrawContext context, GuiIcon icon, int x, int y, int size) {
-        if (icon != GuiIcon.PHONE) {
-            GuiRenderUtil.sprite(context, ManagementGuiAtlas.icon(icon), x, y, size, size);
-            return;
-        }
-        float scale = size / 16.0F;
-        context.getMatrices().pushMatrix();
-        context.getMatrices().translate(x, y);
-        context.getMatrices().scale(scale, scale);
-        context.drawItem(new ItemStack(ModItems.MOBILE_PHONE), 0, 0);
-        context.getMatrices().popMatrix();
-    }
-
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 1 && !closing) {
+            close();
+            return true;
+        }
         if (button != 0 || closing || awaitingServer) return false;
         if (closeButton.contains((int) mouseX, (int) mouseY)) {
             close();
@@ -299,8 +293,16 @@ public final class PhoneMenuScreen extends Screen {
     }
 
     private static boolean isNavigation(GuiMenuElement element) {
-        String label = element.label().toLowerCase(Locale.ROOT);
-        return element.id() == 49 || element.id() == 53 || label.startsWith("zurück");
+        String label = element.label().getString().toLowerCase(Locale.ROOT);
+        return element.id() == 49 || element.id() == 53
+                || label.startsWith("zurück") || label.startsWith("back");
+    }
+
+    private boolean isLauncher() {
+        return title.getContent() instanceof TranslatableTextContent translated
+                ? translated.getKey().equals("gui.terranexus.phone.launcher.title")
+                : title.getString().equalsIgnoreCase("TN-Handy")
+                || title.getString().equalsIgnoreCase("TN Phone");
     }
 
     private static int rows(int entries, int columns) {

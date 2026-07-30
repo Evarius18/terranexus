@@ -36,6 +36,10 @@ public final class PhoneLayoutGeometryTest {
                         viewport.name() + ": kompakte App-Kacheln kollidieren mit der Zurück-Navigation");
                 require(24 + 4 + 28 <= usableHeight,
                         viewport.name() + ": kompaktes Wählfeld kollidiert mit der Zurück-Navigation");
+                require(44 + 20 <= contentHeight - 27,
+                        viewport.name() + ": Kontaktfelder kollidieren mit den Speichern-Schaltflächen");
+                require(36 + 24 + 3 + 24 <= contentHeight,
+                        viewport.name() + ": kompakte History-Administration verlässt den Inhaltsbereich");
             }
         }
     }

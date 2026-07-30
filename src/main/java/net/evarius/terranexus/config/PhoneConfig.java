@@ -1,7 +1,7 @@
 package net.evarius.terranexus.config;
 
 public final class PhoneConfig {
-    public String _description = "TerraNexus-Handy: serverseitige Synchronisierung und begrenzte Anrufhistorie.";
+    public String _description = "TerraNexus-Handy: Synchronisierung und maximale Anzahl übertragener RP-VCA-Historieneinträge.";
     public int synchronizationIntervalTicks = 10;
     public int historyLimit = 50;
     public int maximumDialLength = 64;

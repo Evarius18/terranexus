@@ -20,8 +20,6 @@ import net.minecraft.util.Identifier;
 import java.util.function.Function;
 
 public class ModItems {
-    public static final Item PINK_GARNET = registerItem("pink_garnet");
-    public static final Item RAW_PINK_GARNET = registerItem("raw_pink_garnet");
     public static final Item CITIZEN_ID_CARD = registerItem("citizen_id_card",
             new Item.Settings().maxCount(1), CitizenIdCardItem::new);
     public static final Item MANAGEMENT_TABLET = registerItem("management_tablet",
@@ -55,8 +53,6 @@ public class ModItems {
     public static void registerModItems() {
         TerraNexus.LOGGER.info("Registering Mod Items for " + TerraNexus.MOD_ID);
         ItemGroupEvents.modifyEntriesEvent(ItemGroups.INGREDIENTS).register(entries -> {
-            entries.add(PINK_GARNET);
-            entries.add(RAW_PINK_GARNET);
             entries.add(MANAGEMENT_TABLET);
             entries.add(BUILDING_AUTHORITY_TABLET);
             entries.add(LAND_SURVEY_TOOL);

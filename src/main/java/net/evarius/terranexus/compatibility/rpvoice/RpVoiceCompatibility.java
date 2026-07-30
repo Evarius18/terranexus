@@ -16,6 +16,7 @@ public final class RpVoiceCompatibility {
             return;
         }
         provider = RpVoicePhoneProvider.create();
+        RpVoiceInstitutionBridge.register();
     }
 
     public static PhoneFeatureProvider provider() {

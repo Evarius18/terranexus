@@ -1,6 +1,7 @@
 package net.evarius.terranexus.client.gui;
 
 import net.evarius.terranexus.network.gui.GuiMenuElement;
+import net.minecraft.text.Text;
 
 import java.util.List;
 
@@ -47,7 +48,7 @@ public final class GuiDocumentLayoutTest {
     }
 
     private static GuiMenuElement element(int id, boolean enabled, String label) {
-        return new GuiMenuElement(id, "DOCUMENT", label, "", enabled, false);
+        return new GuiMenuElement(id, "DOCUMENT", Text.literal(label), Text.empty(), enabled, false);
     }
 
     private static void require(boolean value, String message) {

@@ -39,15 +39,23 @@ public final class LandPersistenceTest {
         require(building.equals(ResidentialBuilding.CODEC.parse(JsonOps.INSTANCE, encodedBuilding).getOrThrow()),
                 "Mehrfamilienhaus verliert Stammdaten beim Speichern und Laden");
 
-        ResidentialUnit apartment = new ResidentialUnit("property-apartment", "building", "Wohnung 2A", false);
+        ResidentialUnit apartment = new ResidentialUnit("property-apartment", "building", "Wohnung 7", false,
+                List.of("Haus A", "Flur 1", "Wohnung 7"));
         ResidentialUnit hallway = new ResidentialUnit("property-hallway", "building", "Treppenhaus", true);
         var encodedApartment = ResidentialUnit.CODEC.encodeStart(JsonOps.INSTANCE, apartment).getOrThrow();
         var encodedHallway = ResidentialUnit.CODEC.encodeStart(JsonOps.INSTANCE, hallway).getOrThrow();
         require(apartment.equals(ResidentialUnit.CODEC.parse(JsonOps.INSTANCE, encodedApartment).getOrThrow()),
                 "Wohnungszuordnung verliert Daten beim Speichern und Laden");
+        require("Haus A · Flur 1 · Wohnung 7".equals(apartment.pathLabel()),
+                "Mehrstufige Wohnungsuntergliederung wird nicht stabil dargestellt");
         require(hallway.equals(ResidentialUnit.CODEC.parse(JsonOps.INSTANCE, encodedHallway).getOrThrow())
                         && "Gemeinschaftsbereich".equals(hallway.typeLabel()),
                 "Gemeinschaftsbereich verliert seine getrennte Nutzungsart");
+        var legacyUnit = encodedHallway.deepCopy();
+        legacyUnit.getAsJsonObject().remove("path_segments");
+        require("Treppenhaus".equals(
+                        ResidentialUnit.CODEC.parse(JsonOps.INSTANCE, legacyUnit).getOrThrow().pathLabel()),
+                "Bestehende flache Wohneinheiten werden nicht rückwärtskompatibel migriert");
     }
 
     private static void require(boolean value, String message) {

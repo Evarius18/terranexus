@@ -26,44 +26,59 @@ public final class AdminDesktopScreen {
         boolean centralBank = InstitutionAccess.hasCentralBankPermission(player, InstitutionPermission.CENTRAL_BANK_VIEW);
         boolean areaFinance = AreaFinanceScreen.hasManagedArea(player);
         if (!identity && !land && !institution && !bank && !centralBank && !areaFinance) {
-            player.sendMessage(Text.literal("Dieser Verwaltungs-PC ist nur für autorisierte Bedienstete freigeschaltet.").formatted(Formatting.RED), false);
+            player.sendMessage(Text.translatable("message.terranexus.admin_desktop.denied").formatted(Formatting.RED), false);
             return;
         }
         SimpleInventory inventory = new SimpleInventory(54);
         Map<Integer, java.util.function.Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
-        String desktopName = ConfigManager.general().serverDisplayName + " Admin-Desktop";
+        Text desktopName = Text.translatable("gui.terranexus.admin_desktop.title",
+                ConfigManager.general().serverDisplayName);
         ManagementHubScreen.display(inventory, 4, Items.COMPARATOR, desktopName,
-                AuthorityState.isTnAdmin(player) ? "TNAdmin-Entwicklungszugriff aktiv"
-                        : AuthorityState.isAdministrator(player) ? "Administrationszugriff aktiv"
-                        : "Fachmodule entsprechend deiner Rollen");
+                Text.translatable(AuthorityState.isTnAdmin(player) ? "gui.terranexus.admin_desktop.access.tnadmin"
+                        : AuthorityState.isAdministrator(player) ? "gui.terranexus.admin_desktop.access.admin"
+                        : "gui.terranexus.admin_desktop.access.roles"));
         if (identity) {
-            ManagementHubScreen.display(inventory, 19, Items.WRITABLE_BOOK, "Bürger- und Einreiseverwaltung", "Akten anlegen, bearbeiten und freischalten");
+            ManagementHubScreen.display(inventory, 19, Items.WRITABLE_BOOK,
+                    Text.translatable("gui.terranexus.admin_desktop.citizens"),
+                    Text.translatable("gui.terranexus.admin_desktop.citizens.description"));
             actions.put(19, ignored -> ImmigrationScreen.open(player));
         }
         if (bank) {
-            ManagementHubScreen.display(inventory, 21, Items.GOLD_BLOCK, "Bankverwaltung", "Konten, Schalter, Sperren und Revision");
+            ManagementHubScreen.display(inventory, 21, Items.GOLD_BLOCK,
+                    Text.translatable("gui.terranexus.admin_desktop.bank"),
+                    Text.translatable("gui.terranexus.admin_desktop.bank.description"));
             actions.put(21, ignored -> BankManagementScreen.open(player));
         }
         if (institution) {
-            ManagementHubScreen.display(inventory, 23, Items.BRICKS, "Institutionen", "Personal, Rollen, Gehälter und Finanzen");
+            ManagementHubScreen.display(inventory, 23, Items.BRICKS,
+                    Text.translatable("gui.terranexus.admin.institutions"),
+                    Text.translatable("gui.terranexus.admin_desktop.institutions.description"));
             actions.put(23, ignored -> InstitutionScreen.open(player));
         }
         if (land) {
-            ManagementHubScreen.display(inventory, 25, Items.FILLED_MAP, "Grundbuch und Landlord", "Flächen, Kauf, Miete, Rechte und Gebiete");
+            ManagementHubScreen.display(inventory, 25, Items.FILLED_MAP,
+                    Text.translatable("gui.terranexus.admin_desktop.land"),
+                    Text.translatable("gui.terranexus.admin_desktop.land.description"));
             actions.put(25, ignored -> PropertyScreen.open(player));
         }
         if (AuthorityState.mayAdministerLand(player)) {
-            ManagementHubScreen.display(inventory, 31, Items.WRITABLE_BOOK, "Grundstücks-Audit", "Persistente Änderungen und Eigentümerwechsel");
+            ManagementHubScreen.display(inventory, 31, Items.WRITABLE_BOOK,
+                    Text.translatable("gui.terranexus.admin.audit"),
+                    Text.translatable("gui.terranexus.admin_desktop.audit.description"));
             actions.put(31, ignored -> LandSearchScreen.audit(player));
         }
         if (centralBank) {
-            ManagementHubScreen.display(inventory, 33, Items.BEACON, "Zentralbank", "Geldmenge, Geldflüsse und Geldpolitik");
+            ManagementHubScreen.display(inventory, 33, Items.BEACON,
+                    Text.translatable("gui.terranexus.admin_desktop.central_bank"),
+                    Text.translatable("gui.terranexus.admin_desktop.central_bank.description"));
             actions.put(33, ignored -> CentralBankScreen.open(player));
         }
         if (areaFinance) {
-            ManagementHubScreen.display(inventory, 35, Items.MAP, "Verwaltungsfinanzen", "Gebietskonten, Personal und Gehälter");
+            ManagementHubScreen.display(inventory, 35, Items.MAP,
+                    Text.translatable("gui.terranexus.admin_desktop.area_finance"),
+                    Text.translatable("gui.terranexus.admin_desktop.area_finance.description"));
             actions.put(35, ignored -> AreaFinanceScreen.open(player));
         }
-        CustomGuiService.open(player, inventory, actions, Text.literal(desktopName).formatted(Formatting.DARK_AQUA));
+        CustomGuiService.open(player, inventory, actions, desktopName.copy().formatted(Formatting.DARK_AQUA));
     }
 }

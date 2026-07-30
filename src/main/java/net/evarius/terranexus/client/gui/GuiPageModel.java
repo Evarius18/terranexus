@@ -66,7 +66,7 @@ public final class GuiPageModel {
     }
 
     private static boolean isNavigation(GuiMenuElement element) {
-        String label = element.label().toLowerCase(Locale.ROOT);
+        String label = element.label().getString().toLowerCase(Locale.ROOT);
         return label.startsWith("zurück") || label.startsWith("vorherige seite")
                 || label.startsWith("nächste seite") || element.id() == 49 || element.id() == 53;
     }
