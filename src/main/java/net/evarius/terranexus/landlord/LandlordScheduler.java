@@ -4,6 +4,7 @@ import net.evarius.terranexus.config.ConfigManager;
 import net.evarius.terranexus.institution.InstitutionState;
 import net.evarius.terranexus.institution.TimeClockService;
 import net.evarius.terranexus.management.EconomyScreen;
+import net.evarius.terranexus.economy.WelfareState;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
@@ -49,6 +50,7 @@ public final class LandlordScheduler {
                 LandManagementState.get(server).processRents(server, now);
                 LandManagementState.get(server).processAreaPayroll(server, now);
                 InstitutionState.get(server).processPayroll(server, now);
+                WelfareState.get(server).process(server, now);
             }
         });
     }

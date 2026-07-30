@@ -35,19 +35,19 @@ public final class TimeClockConfig {
                 List.of(), 1, "AT_LEAST"));
         result.put("fire_department_staffing", new TimeClockRuleConfig(
                 "Feuerwehr-Einsatzbereitschaft", "Kann von Feuer- und Simulationsmechaniken als Besetzungsregel abgefragt werden.",
-                List.of("Feuerwehr", "Fire Department"), 3, "AT_LEAST"));
+                List.of("FW", "Feuerwehr", "Fire Department"), 3, "AT_LEAST"));
         result.put("fire", new TimeClockRuleConfig(true,
                 "Feuerausbreitung bei Unterbesetzung",
                 "Feuer kann sich ausbreiten, solange weniger als die konfigurierte Zahl Feuerwehrleute im Dienst ist.",
-                List.of("Feuerwehr", "Fire Department"), 3, "LESS_THAN", false));
+                List.of("FW", "Feuerwehr", "Fire Department"), 3, "LESS_THAN", false));
         result.put("medical", new TimeClockRuleConfig(true,
                 "Rettungsdienst-Mindestbesetzung",
                 "Zentrale Besetzungsregel für spätere Rettungsdienst-Ereignisse.",
-                List.of("Rettungsdienst", "Sanitätsdienst", "Medical", "EMS"), 2, "AT_LEAST", true));
+                List.of("RD", "Rettungsdienst", "Sanitätsdienst", "Medical", "EMS"), 2, "AT_LEAST", true));
         result.put("police", new TimeClockRuleConfig(true,
                 "Polizei-Mindestbesetzung",
                 "Zentrale Besetzungsregel für spätere Polizei-Ereignisse.",
-                List.of("Polizei", "Police"), 4, "AT_LEAST", true));
+                List.of("POL", "Polizei", "Police"), 4, "AT_LEAST", true));
         return result;
     }
 }

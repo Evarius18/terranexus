@@ -347,10 +347,60 @@ public final class InstitutionManagementScreen {
         Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
         ManagementHubScreen.display(inventory, 4, Items.COMPARATOR, "Institutionseinstellungen", institution.name() + " · " + institution.type());
         ManagementHubScreen.display(inventory, 13, Items.NAME_TAG, "Aktueller Eigentümer", citizenName(player, institution.ownerUuid()));
+        ManagementHubScreen.display(inventory, 15, Items.COMPASS, "Organisationszuordnung",
+                organizationLabel(institution.organizationType()) + " · " + institution.organizationType());
+        if (InstitutionAccess.has(player, institutionId, InstitutionPermission.MANAGE_SETTINGS))
+            button(inventory, actions, 24, Items.COMPASS, "Zuordnung ändern",
+                    "Für Funk, Rufnummern und Dienstübersichten",
+                    ignored -> organizationTypes(player, institutionId));
         if (InstitutionAccess.has(player, institutionId, InstitutionPermission.TRANSFER_OWNERSHIP))
             button(inventory, actions, 22, Items.WRITABLE_BOOK, "Eigentum übertragen", "Neuen Eigentümer aus Beschäftigten wählen", ignored -> ownerCandidates(player, institutionId, 0));
+        if (AuthorityState.isAdministrator(player) || institution.ownerUuid().equals(player.getUuidAsString()))
+            button(inventory, actions, 40, Items.LAVA_BUCKET, "Institution löschen",
+                    "Nur bei leerem Institutionskonto · Eigentum fällt an Wilderness",
+                    ignored -> confirmDelete(player, institutionId));
         button(inventory, actions, 8, Items.ARROW, "Zurück", "Zum Institutionsdesktop", ignored -> open(player, institutionId));
         menu(player, inventory, actions, "Institution · Einstellungen");
+    }
+
+    private static void organizationTypes(ServerPlayerEntity player, String institutionId) {
+        if (!InstitutionAccess.has(player, institutionId, InstitutionPermission.MANAGE_SETTINGS)) {
+            denied(player);
+            return;
+        }
+        List<SelectionMenuScreen.Option> options = ConfigManager.institutions().organizationTypes.entrySet().stream()
+                .map(entry -> new SelectionMenuScreen.Option(entry.getKey(), entry.getValue(), entry.getKey(), Items.COMPASS))
+                .toList();
+        SelectionMenuScreen.open(player, "Organisationszuordnung", options, selected -> {
+            if (!InstitutionState.get(player.getServer()).setOrganizationType(player, institutionId, selected))
+                error(player, "Die Organisationszuordnung konnte nicht gespeichert werden.");
+            settings(player, institutionId);
+        }, () -> settings(player, institutionId));
+    }
+
+    private static void confirmDelete(ServerPlayerEntity player, String institutionId) {
+        Institution institution = current(player, institutionId);
+        if (institution == null) {
+            InstitutionScreen.open(player);
+            return;
+        }
+        SimpleInventory inventory = new SimpleInventory(54);
+        Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
+        ManagementHubScreen.display(inventory, 4, Items.BARRIER, "Institution endgültig löschen",
+                institution.name() + " · Konto muss leer sein");
+        button(inventory, actions, 20, Items.LAVA_BUCKET, "Löschung bestätigen",
+                "Personal, Dienststatus und Verknüpfungen werden bereinigt", ignored -> {
+                    InstitutionState.DeletionResult result = InstitutionState.get(player.getServer()).delete(player, institutionId);
+                    player.sendMessage(Text.literal(result.message()).formatted(result.success() ? Formatting.GREEN : Formatting.RED), false);
+                    if (result.success()) InstitutionScreen.open(player); else settings(player, institutionId);
+                });
+        button(inventory, actions, 24, Items.LIME_DYE, "Abbrechen", "Institution unverändert lassen",
+                ignored -> settings(player, institutionId));
+        menu(player, inventory, actions, "Institution · Löschung");
+    }
+
+    private static String organizationLabel(String organizationType) {
+        return ConfigManager.institutions().organizationTypes.getOrDefault(organizationType, "Sonstige");
     }
 
     private static void ownerCandidates(ServerPlayerEntity player, String institutionId, int requestedPage) {

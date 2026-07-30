@@ -184,19 +184,76 @@ public final class PropertyScreen {
         String validation=LandGeometry.validatePolygon(points);if(validation!=null){error(player,validation);open(player);return;}
         askName(player, name -> finishCreate(player, state, LandlordState.polygon(name, player.getUuid(), dimension, points)));
     }
-    private static void finishCreate(ServerPlayerEntity player, LandlordState state, LandProperty property) {LandProperty conflict=state.conflict(property);if(conflict!=null){error(player,"Überschneidung mit „"+conflict.name()+"“ (ID "+conflict.id()+").");open(player);return;}SimpleInventory inventory=new SimpleInventory(54);Map<Integer,Consumer<net.minecraft.entity.player.PlayerEntity>> actions=new HashMap<>();ManagementHubScreen.display(inventory,4,Items.FILLED_MAP,"Vorschau: "+property.name(),type(property)+" · "+property.minX()+","+property.minZ()+" bis "+property.maxX()+","+property.maxZ());ManagementHubScreen.display(inventory,20,Items.EMERALD,"Endgültig eintragen","Grundstück wird persistent gespeichert");actions.put(20,x->commitCreate(player,state,property));ManagementHubScreen.display(inventory,24,Items.BARRIER,"Abbrechen","Auswahl bleibt für Korrekturen erhalten");actions.put(24,x->open(player));openMenu(player,inventory,actions,"Grundstück bestätigen");}
+    private static void finishCreate(ServerPlayerEntity player, LandlordState state, LandProperty property) {
+        LandProperty conflict = state.conflict(property);
+        if (conflict != null) {
+            error(player, "Überschneidung mit „" + conflict.name() + "“ (ID " + conflict.id() + ").");
+            open(player);
+            return;
+        }
+        PropertyDrafts.CreateOptions options = PropertyDrafts.createOptions(player.getUuid(), property,
+                ConfigManager.administration().privateLandUse);
+        SimpleInventory inventory = new SimpleInventory(54);
+        Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
+        ManagementHubScreen.display(inventory, 4, Items.FILLED_MAP, "Vorschau: " + property.name(),
+                type(property) + " · " + property.minX() + "," + property.minZ() + " bis "
+                        + property.maxX() + "," + property.maxZ());
+        button(inventory, actions, 12, Items.OAK_SIGN, "Adresse",
+                options.address().isBlank() ? "Noch nicht eingetragen" : options.address(),
+                ignored -> askCreationAddress(player, state, property));
+        button(inventory, actions, 14, Items.COMPASS, "Nutzungsart", options.landUse(),
+                ignored -> selectCreationLandUse(player, state, property));
+        ManagementHubScreen.display(inventory, 20, Items.EMERALD, "Endgültig eintragen",
+                "Danach öffnet sich die vollständige Grundstücksakte");
+        actions.put(20, ignored -> commitCreate(player, state, property));
+        ManagementHubScreen.display(inventory, 24, Items.BARRIER, "Abbrechen", "Auswahl bleibt für Korrekturen erhalten");
+        actions.put(24, ignored -> {
+            PropertyDrafts.cancelCreate(player.getUuid());
+            open(player);
+        });
+        openMenu(player, inventory, actions, "Grundstück konfigurieren");
+    }
+
+    private static void askCreationAddress(ServerPlayerEntity player, LandlordState state, LandProperty property) {
+        player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, inventory, ignored) ->
+                new TextInputScreenHandler(id, inventory, value -> {
+                    PropertyDrafts.CreateOptions current = PropertyDrafts.createOptions(player.getUuid(), property,
+                            ConfigManager.administration().privateLandUse);
+                    PropertyDrafts.updateCreateOptions(player.getUuid(), current.withAddress(value == null ? "" : value.trim()));
+                    finishCreate(player, state, property);
+                }), Text.literal("Grundstücksadresse")));
+    }
+
+    private static void selectCreationLandUse(ServerPlayerEntity player, LandlordState state, LandProperty property) {
+        List<SelectionMenuScreen.Option> options = ConfigManager.administration().landUseTypes.stream()
+                .map(value -> new SelectionMenuScreen.Option(value, value, "Nutzungsart des Grundstücks", Items.COMPASS))
+                .toList();
+        SelectionMenuScreen.open(player, "Nutzungsart auswählen", options, selected -> {
+            PropertyDrafts.CreateOptions current = PropertyDrafts.createOptions(player.getUuid(), property,
+                    ConfigManager.administration().privateLandUse);
+            PropertyDrafts.updateCreateOptions(player.getUuid(), current.withLandUse(selected));
+            finishCreate(player, state, property);
+        }, () -> finishCreate(player, state, property));
+    }
     private static void commitCreate(ServerPlayerEntity player, LandlordState state, LandProperty property) {
         if(!LandPermissionService.mayCreateProperty(player)){error(player,"Deine Berechtigung zum Anlegen von Grundstücken ist nicht mehr gültig.");return;}
         if (state.add(property)) {
             LandManagementState management = LandManagementState.get(player.getServer());
+            PropertyDrafts.CreateOptions options = PropertyDrafts.createOptions(player.getUuid(), property,
+                    ConfigManager.administration().privateLandUse);
             management.assignArea(property.id(), LandManagementState.ROOT_AREA_ID);
-            management.setLandUse(property.id(), ConfigManager.administration().privateLandUse);
+            management.setLandUse(property.id(), options.landUse());
+            if (!options.address().isBlank()) management.setAddress(property.id(), options.address());
+            PropertyDrafts.cancelCreate(player.getUuid());
             PropertyDrafts.POS1.remove(player.getUuid());
             if(property.regionType().equals("polygon"))LandSelectionState.get(player.getServer()).clear(player.getUuid());
             player.sendMessage(Text.literal("Grundstück „" + property.name() + "“ wurde angelegt.").formatted(Formatting.GREEN), false);
             LandAuditState.get(player.getServer()).log(player.getUuid(),"CREATE",property,type(property));
-        } else error(player, "Dieser Bereich überschneidet sich mit einem bestehenden Grundstück.");
-        open(player);
+            beginEdit(player, property);
+        } else {
+            error(player, "Dieser Bereich überschneidet sich mit einem bestehenden Grundstück.");
+            finishCreate(player, state, property);
+        }
     }
 
     private static void startSurvey(ServerPlayerEntity player,String dimension){if(!LandPermissionService.mayCreateProperty(player)){error(player,"Keine Berechtigung zum Anlegen von Grundstücken.");return;}net.minecraft.item.ItemStack tool=new net.minecraft.item.ItemStack(ModItems.LAND_SURVEY_TOOL);if(!player.getInventory().contains(tool)){error(player,"Kein Landvermessungsgerät im Inventar. Hole die Hardware vor dem Einsatz aus dem Lager.");open(player);return;}LandSelectionState selections=LandSelectionState.get(player.getServer());LandSelection current=selections.get(player.getUuid());if(current==null||!current.dimension().equals(dimension))selections.start(player.getUuid(),dimension);player.closeHandledScreen();player.sendMessage(Text.literal("Vermessung aktiv: Rechtsklick setzt einen Eckpunkt, Linksklick entfernt den letzten. Öffne zum Abschluss wieder das Bauamt-Tablet.").formatted(Formatting.GREEN),false);}

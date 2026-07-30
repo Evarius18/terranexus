@@ -135,6 +135,13 @@ public final class TimeClockState extends PersistentState {
         return thresholdOverrides.containsKey(thresholdKey(institutionId, ruleId));
     }
 
+    public synchronized void removeInstitution(String institutionId) {
+        boolean changed = records.entrySet().removeIf(entry -> entry.getValue().institutionId().equals(institutionId));
+        changed |= thresholdOverrides.keySet().removeIf(key -> key.startsWith(institutionId + '|'));
+        changed |= dutyCounts.remove(institutionId) != null;
+        if (changed) markDirty();
+    }
+
     private synchronized void ensureIntegrity(MinecraftServer server) {
         if (runtimeInitialized) return;
         boolean changed = false;

@@ -6,6 +6,8 @@ import net.evarius.terranexus.config.ConfigManager;
 import net.evarius.terranexus.economy.EconomyState;
 import net.evarius.terranexus.identity.AuthorityState;
 import net.evarius.terranexus.identity.IdentityState;
+import net.evarius.terranexus.landlord.LandManagementState;
+import net.evarius.terranexus.landlord.LandlordState;
 import net.minecraft.datafixer.DataFixTypes;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -85,6 +87,49 @@ public class InstitutionState extends PersistentState {
         InstitutionRole role = employee.institutionRole();
         return role == InstitutionRole.OWNER || role == InstitutionRole.DIRECTOR || role == InstitutionRole.MANAGER;
     }
+
+    public boolean isEmployed(UUID player) {
+        String id = player.toString();
+        return institutions.values().stream().anyMatch(institution -> institution.employees().containsKey(id));
+    }
+
+    public synchronized boolean setOrganizationType(ServerPlayerEntity actor, String institutionId, String organizationType) {
+        Institution institution = institutions.get(institutionId);
+        String normalized = organizationType == null ? "" : organizationType.trim().toUpperCase(java.util.Locale.ROOT);
+        if (institution == null || !ConfigManager.institutions().organizationTypes.containsKey(normalized)
+                || !InstitutionAccess.has(actor, institutionId, InstitutionPermission.MANAGE_SETTINGS)) return false;
+        institutions.put(institutionId, build(institution.id(), institution.name(), institution.type(), normalized,
+                institution.ownerUuid(), institution.employees()));
+        invalidateCaches();
+        markDirty();
+        return true;
+    }
+
+    public synchronized DeletionResult delete(ServerPlayerEntity actor, String institutionId) {
+        Institution institution = institutions.get(institutionId);
+        if (institution == null) return new DeletionResult(false, "Institution wurde nicht gefunden.");
+        if (!AuthorityState.isAdministrator(actor)
+                && !institution.ownerUuid().equals(actor.getUuidAsString()))
+            return new DeletionResult(false, "Nur der Eigentümer oder TNAdmin darf die Institution löschen.");
+        EconomyState economy = EconomyState.get(actor.getServer());
+        String account = EconomyState.institutionAccount(institutionId);
+        if (economy.balance(account) != 0)
+            return new DeletionResult(false, "Das Institutionskonto muss vor der Löschung einen Saldo von 0 besitzen.");
+        LandManagementState landManagement = LandManagementState.get(actor.getServer());
+        if (landManagement.hasInstitutionFinancialLinks(institutionId))
+            return new DeletionResult(false, "Vor der Löschung müssen Verkaufsangebote und Mietverträge beendet werden.");
+
+        LandlordState.get(actor.getServer()).releaseInstitutionOwnership(institutionId);
+        landManagement.releaseInstitutionOwnership(institutionId);
+        TimeClockState.get(actor.getServer()).removeInstitution(institutionId);
+        economy.closeEmptyAccount(account);
+        institutions.remove(institutionId);
+        invalidateCaches();
+        markDirty();
+        return new DeletionResult(true, "Institution „" + institution.name() + "“ wurde gelöscht.");
+    }
+
+    public record DeletionResult(boolean success, String message) {}
 
     public boolean hire(ServerPlayerEntity actor, String institutionId, UUID target, InstitutionRole role) {
         Institution institution = institutions.get(institutionId);
@@ -348,13 +393,18 @@ public class InstitutionState extends PersistentState {
         if (owner == null) owner = new InstitutionEmployee(institution.ownerUuid(), InstitutionRole.OWNER.id(),
                 0, 0, "Individuell", 0, "Migrierter Eigentümer");
         employees.put(institution.ownerUuid(), owner.withRole(InstitutionRole.OWNER));
-        return build(institution.id(), institution.name(), institution.type(), institution.ownerUuid(), employees);
+        return build(institution.id(), institution.name(), institution.type(), institution.organizationType(),
+                institution.ownerUuid(), employees);
     }
 
     private static Institution build(Institution old, String owner, Map<String, InstitutionEmployee> employees) {
-        return build(old.id(), old.name(), old.type(), owner, employees);
+        return build(old.id(), old.name(), old.type(), old.organizationType(), owner, employees);
     }
     private static Institution build(String id, String name, String type, String owner, Map<String, InstitutionEmployee> employees) {
+        return build(id, name, type, "OTHER", owner, employees);
+    }
+    private static Institution build(String id, String name, String type, String organizationType,
+                                     String owner, Map<String, InstitutionEmployee> employees) {
         Map<String, InstitutionEmployee> normalized = new HashMap<>();
         employees.forEach((player, employee) -> normalized.put(player,
                 !player.equals(owner) && employee.institutionRole() == InstitutionRole.OWNER
@@ -363,6 +413,6 @@ public class InstitutionState extends PersistentState {
         if (ownerEmployee != null) normalized.put(owner, ownerEmployee.withRole(InstitutionRole.OWNER));
         Map<String, List<String>> members = new HashMap<>();
         normalized.forEach((player, employee) -> members.put(player, List.of(employee.institutionRole().id())));
-        return new Institution(id, name, type, owner, Map.copyOf(members), Map.copyOf(normalized));
+        return new Institution(id, name, type, organizationType, owner, Map.copyOf(members), Map.copyOf(normalized));
     }
 }

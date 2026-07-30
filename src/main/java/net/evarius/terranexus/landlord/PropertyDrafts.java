@@ -13,10 +13,30 @@ public final class PropertyDrafts {
 
     public static final Map<UUID, BlockPos> POS1 = new HashMap<>();
     private static final Map<UUID, EditDraft> EDITS = new HashMap<>();
+    private static final Map<UUID, CreateOptions> CREATE_OPTIONS = new HashMap<>();
 
     public static EditDraft edit(UUID player) { return EDITS.get(player); }
     public static void cancelEdit(UUID player) { EDITS.remove(player); }
-    public static void retainOnline(java.util.Set<UUID> online) { POS1.keySet().retainAll(online); EDITS.keySet().retainAll(online); }
+    public static CreateOptions createOptions(UUID player, LandProperty property, String defaultLandUse) {
+        CreateOptions current = CREATE_OPTIONS.get(player);
+        if (current == null || !current.propertyId().equals(property.id())) {
+            current = new CreateOptions(property.id(), "", defaultLandUse);
+            CREATE_OPTIONS.put(player, current);
+        }
+        return current;
+    }
+    public static void updateCreateOptions(UUID player, CreateOptions options) { CREATE_OPTIONS.put(player, options); }
+    public static void cancelCreate(UUID player) { CREATE_OPTIONS.remove(player); }
+    public static void retainOnline(java.util.Set<UUID> online) {
+        POS1.keySet().retainAll(online);
+        EDITS.keySet().retainAll(online);
+        CREATE_OPTIONS.keySet().retainAll(online);
+    }
+
+    public record CreateOptions(String propertyId, String address, String landUse) {
+        public CreateOptions withAddress(String value) { return new CreateOptions(propertyId, value, landUse); }
+        public CreateOptions withLandUse(String value) { return new CreateOptions(propertyId, address, value); }
+    }
 
     public static EditDraft begin(UUID player, LandProperty property) {
         List<BlockPos> points = new ArrayList<>();

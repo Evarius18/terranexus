@@ -10,6 +10,10 @@ public final class EconomyConfig {
     public int transferFeeBasisPoints = 0;
     public String accountNumberPrefix = "TN";
     public int accountNumberDigits = 12;
+    public boolean citizenAllowanceEnabled = true;
+    public long citizenAllowanceAmount = 10_000L;
+    public int citizenAllowanceIntervalMinutes = 60;
+    public boolean citizenAllowanceNotifyPlayer = true;
 
     void validate() {
         currencyName = ConfigManager.text(currencyName, "TerraNexus Euro", 48);
@@ -21,5 +25,7 @@ public final class EconomyConfig {
         accountNumberPrefix = ConfigManager.text(accountNumberPrefix, "TN", 6).replaceAll("[^A-Za-z0-9]", "").toUpperCase();
         if (accountNumberPrefix.isBlank()) accountNumberPrefix = "TN";
         accountNumberDigits = ConfigManager.clamp(accountNumberDigits, 8, 16);
+        citizenAllowanceAmount = Math.max(0, citizenAllowanceAmount);
+        citizenAllowanceIntervalMinutes = ConfigManager.clamp(citizenAllowanceIntervalMinutes, 5, 10_080);
     }
 }

@@ -51,6 +51,7 @@ public final class InstitutionAccess {
             keys.add(institution.id());
             keys.add(institution.name());
             keys.add(institution.type());
+            keys.add(institution.organizationType());
             String searchable = (institution.id() + " " + institution.name() + " " + institution.type())
                     .toLowerCase(Locale.ROOT);
             ConfigManager.institutions().emergencyOrganizationMappings.forEach((key, matchers) -> {

@@ -52,7 +52,7 @@ public final class TimeClockService {
         List<RuleStatus> result = new ArrayList<>();
         ConfigManager.timeClock().rules.forEach((ruleId, rule) -> {
             if (!rule.enabled) return;
-            if (!applies(institution.type(), rule)) return;
+            if (!applies(institution, rule)) return;
             int threshold = state.threshold(institutionId, ruleId, rule.defaultThreshold);
             result.add(new RuleStatus(ruleId, rule.label, rule.description, onDuty, threshold,
                     rule.comparison, compare(onDuty, threshold, rule.comparison),
@@ -72,10 +72,29 @@ public final class TimeClockService {
         TimeClockState state = TimeClockState.get(server);
         Set<String> matchingInstitutions = new HashSet<>();
         for (Institution institution : InstitutionState.get(server).all())
-            if (applies(institution.type(), rule)) matchingInstitutions.add(institution.id());
+            if (applies(institution, rule)) matchingInstitutions.add(institution.id());
         return (int) state.activeRecords().stream()
                 .filter(record -> matchingInstitutions.contains(record.institutionId()))
                 .map(DutyRecord::playerUuid).distinct().count();
+    }
+
+    public static int onlineOnDutyForOrganization(MinecraftServer server, String organizationType) {
+        String normalized = organizationType == null ? "" : organizationType.trim().toUpperCase(Locale.ROOT);
+        Set<String> institutions = new HashSet<>();
+        for (Institution institution : InstitutionState.get(server).all())
+            if (institution.organizationType().equalsIgnoreCase(normalized)) institutions.add(institution.id());
+        return (int) TimeClockState.get(server).activeRecords().stream()
+                .filter(record -> institutions.contains(record.institutionId()))
+                .filter(record -> {
+                    try {
+                        return server.getPlayerManager().getPlayer(UUID.fromString(record.playerUuid())) != null;
+                    } catch (IllegalArgumentException ignored) {
+                        return false;
+                    }
+                })
+                .map(DutyRecord::playerUuid)
+                .distinct()
+                .count();
     }
 
     /**
@@ -122,10 +141,15 @@ public final class TimeClockService {
         };
     }
 
-    private static boolean applies(String institutionType, TimeClockRuleConfig rule) {
+    private static boolean applies(Institution institution, TimeClockRuleConfig rule) {
         if (rule.institutionTypeKeywords == null || rule.institutionTypeKeywords.isEmpty()) return true;
-        String type = institutionType.toLowerCase(Locale.ROOT);
-        return rule.institutionTypeKeywords.stream().map(value -> value.toLowerCase(Locale.ROOT)).anyMatch(type::contains);
+        String type = institution.type().toLowerCase(Locale.ROOT);
+        String organizationType = institution.organizationType().toLowerCase(Locale.ROOT);
+        String organizationLabel = ConfigManager.institutions().organizationTypes
+                .getOrDefault(institution.organizationType(), "").toLowerCase(Locale.ROOT);
+        return rule.institutionTypeKeywords.stream().map(value -> value.toLowerCase(Locale.ROOT))
+                .anyMatch(value -> type.contains(value) || organizationType.equals(value)
+                        || organizationLabel.contains(value));
     }
 
     private static boolean compare(int value, int threshold, String comparison) {

@@ -16,6 +16,7 @@ public final class InstitutionConfig {
     public List<String> allowedRoles = new ArrayList<>(List.of("director", "manager", "auditor", "accountant", "hr", "employee"));
     public List<String> allowedTypes = new ArrayList<>(List.of("Behörde", "Unternehmen", "Bank/Finanzinstitut", "Zentralbank", "Verein", "Partei", "Bildungseinrichtung", "Rettungsorganisation", "Sonstige Institution"));
     public List<String> centralBankTypeKeywords = new ArrayList<>(List.of("Zentralbank", "Central Bank"));
+    public Map<String, String> organizationTypes = defaultOrganizationTypes();
     public Map<String, List<String>> emergencyOrganizationMappings = defaultEmergencyMappings();
 
     void validate() {
@@ -32,6 +33,16 @@ public final class InstitutionConfig {
         if (allowedTypes.isEmpty()) allowedTypes = List.of("Sonstige Institution");
         centralBankTypeKeywords = ConfigManager.uniqueText(centralBankTypeKeywords, 8, 48);
         if (centralBankTypeKeywords.isEmpty()) centralBankTypeKeywords = List.of("Zentralbank");
+        LinkedHashMap<String, String> normalizedTypes = new LinkedHashMap<>();
+        if (organizationTypes != null) organizationTypes.forEach((key, label) -> {
+            String normalizedKey = ConfigManager.text(key, "", 24).toUpperCase(Locale.ROOT)
+                    .replaceAll("[^A-Z0-9_]", "");
+            String normalizedLabel = ConfigManager.text(label, "", 48);
+            if (!normalizedKey.isBlank() && !normalizedLabel.isBlank() && normalizedTypes.size() < 32)
+                normalizedTypes.putIfAbsent(normalizedKey, normalizedLabel);
+        });
+        organizationTypes = normalizedTypes.isEmpty() ? defaultOrganizationTypes() : normalizedTypes;
+        organizationTypes.putIfAbsent("OTHER", "Sonstige");
         LinkedHashMap<String, List<String>> emergencyMappings = new LinkedHashMap<>();
         if (emergencyOrganizationMappings != null) emergencyOrganizationMappings.forEach((key, matchers) -> {
             String normalizedKey = ConfigManager.text(key, "", 32).toUpperCase(Locale.ROOT);
@@ -53,6 +64,16 @@ public final class InstitutionConfig {
         result.put("FW", List.of("Feuerwehr", "Fire Department"));
         result.put("RD", List.of("Rettungsdienst", "Sanitätsdienst", "Medical", "EMS"));
         result.put("POL", List.of("Polizei", "Police"));
+        return result;
+    }
+
+    private static Map<String, String> defaultOrganizationTypes() {
+        LinkedHashMap<String, String> result = new LinkedHashMap<>();
+        result.put("FW", "Feuerwehr");
+        result.put("POL", "Polizei");
+        result.put("RD", "Rettungsdienst");
+        result.put("THW", "Technisches Hilfswerk");
+        result.put("OTHER", "Sonstige");
         return result;
     }
 }

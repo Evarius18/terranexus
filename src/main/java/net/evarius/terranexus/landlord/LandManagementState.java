@@ -416,6 +416,36 @@ public class LandManagementState extends PersistentState {
         markDirty();
     }
 
+    public synchronized void releaseInstitutionOwnership(String institutionId) {
+        boolean changed = false;
+        Set<String> releasedAreas = new HashSet<>();
+        for (Map.Entry<String, AdministrativeArea> entry : areas.entrySet()) {
+            AdministrativeArea area = entry.getValue();
+            if ("institution".equals(area.ownerType()) && institutionId.equals(area.ownerId())) {
+                entry.setValue(area.withOwner(SYSTEM_OWNER_TYPE, ROOT_AREA_ID));
+                releasedAreas.add(area.id());
+                changed = true;
+            }
+        }
+        if (areaEmployees.entrySet().removeIf(entry -> releasedAreas.contains(entry.getValue().areaId()))) changed = true;
+        if (changed) {
+            invalidateAreas();
+            markDirty();
+        }
+    }
+
+    public boolean hasInstitutionFinancialLinks(String institutionId) {
+        String account = EconomyState.institutionAccount(institutionId);
+        return sales.values().stream().anyMatch(offer -> offer.sellerAccount().equals(account))
+                || leases.values().stream().anyMatch(lease -> lease.landlordAccount().equals(account)
+                        || lease.depositAccount().equals(account));
+    }
+
+    public boolean isEmployed(UUID playerId) {
+        String id = playerId.toString();
+        return areaEmployees.values().stream().anyMatch(employee -> employee.playerUuid().equals(id));
+    }
+
     public static long periodMillis(int days) {
         return (long) Math.max(1, days) * ConfigManager.claims().rentDayDurationMinutes * 60_000L;
     }

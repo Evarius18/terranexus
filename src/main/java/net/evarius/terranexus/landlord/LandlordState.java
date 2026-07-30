@@ -116,6 +116,22 @@ public class LandlordState extends PersistentState {
         return true;
     }
 
+    public synchronized int releaseInstitutionOwnership(String institutionId) {
+        int changed = 0;
+        for (Map.Entry<String, LandProperty> entry : properties.entrySet()) {
+            LandProperty property = entry.getValue();
+            if (!property.ownerType().equals("institution") || !property.ownerId().equals(institutionId)) continue;
+            entry.setValue(property.withOwner(LandManagementState.AREA_OWNER_TYPE, LandManagementState.ROOT_AREA_ID));
+            changed++;
+        }
+        if (changed > 0) {
+            rebuildIndex();
+            invalidateViews();
+            markDirty();
+        }
+        return changed;
+    }
+
     private LandProperty firstContaining(Collection<String> ids, String dimension, int x, int y, int z) {
         if (ids == null) return null;
         for (String id : ids) {

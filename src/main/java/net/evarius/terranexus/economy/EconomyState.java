@@ -103,6 +103,17 @@ public class EconomyState extends PersistentState {
     }
     public boolean isFrozen(String account) { return ensureAccount(account).frozen(); }
 
+    public synchronized boolean closeEmptyAccount(String account) {
+        if (account == null || account.startsWith("system:") || balance(account) != 0) return false;
+        BankAccount removed = accounts.remove(account);
+        balances.remove(account);
+        if (removed != null) accountNumberIndex.remove(normalizeAccountNumber(removed.accountNumber()));
+        accountTransactions.remove(account);
+        metricsCache = null;
+        markDirty();
+        return true;
+    }
+
     public void deposit(UUID owner, long cents) { deposit(playerAccount(owner), cents); }
     public void deposit(String account, long cents) {
         if (!adjust(account, cents, "Administrative Einzahlung", "", institutionFrom(account), "DEPOSIT"))
