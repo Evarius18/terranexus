@@ -15,7 +15,7 @@ final class RpVoiceInstitutionBridge {
         RpVcaApi.registerInstitutionMembershipProvider(
                 TerraNexus.MOD_ID, InstitutionAccess::rpVoiceMembershipKeys);
         RpVcaApi.registerDeviceCapabilityProvider(TerraNexus.MOD_ID, stack ->
-                stack.isOf(ModItems.MOBILE_PHONE)
+                ModItems.isMobilePhone(stack)
                         ? java.util.Optional.of(DeviceCapabilities.externalPhone())
                         : java.util.Optional.empty());
         RpVcaApi.registerPhoneApplication("terranexus", new PhoneApplicationProvider() {

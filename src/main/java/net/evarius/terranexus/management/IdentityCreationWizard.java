@@ -5,7 +5,6 @@ import net.evarius.terranexus.identity.IdentityState;
 import net.evarius.terranexus.identity.AuthorityState;
 import net.evarius.terranexus.identity.RoleplayNames;
 import net.evarius.terranexus.config.ConfigManager;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -45,8 +44,7 @@ public final class IdentityCreationWizard {
         }
         if(step==6){openGenderSelection(officer,citizen,values);return;}
         String label = LABELS.get(step);
-        officer.openHandledScreen(new SimpleNamedScreenHandlerFactory(
-                (syncId, inventory, ignored) -> new TextInputScreenHandler(syncId, inventory, value -> {
+        TextPromptService.open(officer, "Bürgerakte: " + label, "", value -> {
                     if(!AuthorityState.mayManageIdentity(officer)){officer.sendMessage(Text.literal("Deine Verwaltungsberechtigung ist nicht mehr gültig.").formatted(Formatting.RED),false);return;}
                     value=value==null?"":value.trim();
                     int maximumLength=ConfigManager.immigration().maximumFieldLength;
@@ -73,7 +71,7 @@ public final class IdentityCreationWizard {
                                 + " wurde angelegt und wartet auf die Einreisefreigabe.").formatted(Formatting.GREEN), false);
                         ImmigrationScreen.open(officer);
                     }
-                }), Text.literal("Bürgerakte: " + label).formatted(Formatting.DARK_AQUA)));
+                }, () -> ImmigrationScreen.open(officer));
     }
 
     private static void openGenderSelection(ServerPlayerEntity officer,ServerPlayerEntity citizen,List<String> values){List<SelectionMenuScreen.Option> options=ConfigManager.immigration().genderOptions.stream().map(value->new SelectionMenuScreen.Option(value,value,"Amtliche Auswahl",Items.NAME_TAG)).toList();SelectionMenuScreen.open(officer,"Geschlecht auswählen",options,value->{if(!AuthorityState.mayManageIdentity(officer)){officer.sendMessage(Text.literal("Deine Verwaltungsberechtigung ist nicht mehr gültig.").formatted(Formatting.RED),false);return;}values.add(value);openStep(officer,citizen,values,7);},()->{List<String> previous=new ArrayList<>(values);if(!previous.isEmpty())previous.remove(previous.size()-1);openStep(officer,citizen,previous,5);});}

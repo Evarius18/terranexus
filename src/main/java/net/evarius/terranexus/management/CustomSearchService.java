@@ -27,7 +27,10 @@ public final class CustomSearchService {
         PayloadTypeRegistry.playC2S().register(SearchActionPayload.ID, SearchActionPayload.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(SearchActionPayload.ID,
                 (payload, context) -> handle(context.player(), payload));
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> SESSIONS.remove(handler.player.getUuid()));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            Session removed = SESSIONS.remove(handler.player.getUuid());
+            if (removed != null) server.execute(() -> runCancel(removed, handler.player, false));
+        });
     }
 
     public static void open(ServerPlayerEntity player, String title, String placeholder, String initialValue,
@@ -37,6 +40,8 @@ public final class CustomSearchService {
         int minimum = Math.max(0, Math.min(maximum, minimumLength));
         String token = UUID.randomUUID().toString();
         String initial = trim(initialValue, maximum);
+        Session replaced = SESSIONS.remove(player.getUuid());
+        if (replaced != null) runCancel(replaced, player, false);
         SESSIONS.put(player.getUuid(), new Session(token, minimum, maximum, submit, cancel));
         ServerPlayNetworking.send(player, new OpenSearchPayload(token, trim(title, 160),
                 trim(placeholder, 256), initial, minimum, maximum));
@@ -50,7 +55,8 @@ public final class CustomSearchService {
         }
         if (payload.action().equals("CANCEL")) {
             SESSIONS.remove(player.getUuid());
-            player.getServer().execute(session.cancel);
+            ServerPlayNetworking.send(player, new SearchStatusPayload(session.token, "CLOSED", ""));
+            player.getServer().execute(() -> runCancel(session, player, true));
             return;
         }
         if (!payload.action().equals("SUBMIT")) {
@@ -61,17 +67,21 @@ public final class CustomSearchService {
         String query = payload.query() == null ? "" : payload.query().trim();
         if (query.length() < session.minimumLength || query.length() > session.maximumLength) {
             String message = query.length() < session.minimumLength
-                    ? "Der Suchbegriff muss mindestens " + session.minimumLength + " Zeichen enthalten."
-                    : "Der Suchbegriff ist zu lang.";
+                    ? "Die Eingabe muss mindestens " + session.minimumLength + " Zeichen enthalten."
+                    : "Die Eingabe ist zu lang.";
             ServerPlayNetworking.send(player, new SearchStatusPayload(session.token, "ERROR", message));
             return;
         }
 
         SESSIONS.remove(player.getUuid());
         player.getServer().execute(() -> {
-            try { session.submit.accept(query); }
+            try {
+                session.submit.accept(query);
+                if (!SESSIONS.containsKey(player.getUuid()) && !player.isDisconnected())
+                    ServerPlayNetworking.send(player, new SearchStatusPayload(session.token, "CLOSED", ""));
+            }
             catch (RuntimeException exception) {
-                TerraNexus.LOGGER.error("TerraNexus-Suche fehlgeschlagen: Spieler={} Titel={}",
+                TerraNexus.LOGGER.error("TerraNexus-Eingabedialog fehlgeschlagen: Spieler={} Titel={}",
                         player.getUuidAsString(), payload.token(), exception);
                 if (!player.isDisconnected()) {
                     SESSIONS.put(player.getUuid(), session);
@@ -85,6 +95,16 @@ public final class CustomSearchService {
     private static String trim(String value, int maximum) {
         if (value == null) return "";
         return value.length() <= maximum ? value : value.substring(0, maximum);
+    }
+
+    private static void runCancel(Session session, ServerPlayerEntity player, boolean reportFailure) {
+        try { session.cancel.run(); }
+        catch (RuntimeException exception) {
+            TerraNexus.LOGGER.error("TerraNexus-Eingabeabbruch fehlgeschlagen: Spieler={}",
+                    player.getUuidAsString(), exception);
+            if (reportFailure && !player.isDisconnected())
+                player.sendMessage(net.minecraft.text.Text.literal("Der Eingabedialog wurde beendet."), false);
+        }
     }
 
     private record Session(String token, int minimumLength, int maximumLength,

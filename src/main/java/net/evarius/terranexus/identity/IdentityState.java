@@ -118,6 +118,17 @@ public class IdentityState extends PersistentState {
         if (approvals.remove(citizen.toString()) != null) { cachedApproved = null; markDirty(); }
     }
 
+    public CitizenIdentity remove(UUID citizen) {
+        CitizenIdentity removed = identities.remove(citizen.toString());
+        approvals.remove(citizen.toString());
+        if (removed != null) {
+            citizenNumbers.remove(removed.citizenNumber());
+            invalidateCaches();
+            markDirty();
+        }
+        return removed;
+    }
+
     private void invalidateCaches() { cachedAll = null; cachedApproved = null; }
 
     public record ApprovalRecord(String approvedBy, long approvedAt) {}

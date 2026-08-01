@@ -1,5 +1,8 @@
 package net.evarius.terranexus.client.gui;
 
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
+import net.evarius.terranexus.identity.CitizenPortraitSnapshot;
 import net.evarius.terranexus.network.gui.GuiAction;
 import net.evarius.terranexus.network.gui.GuiActionPayload;
 import net.evarius.terranexus.network.gui.GuiIcon;
@@ -7,7 +10,9 @@ import net.evarius.terranexus.network.gui.GuiMenuElement;
 import net.evarius.terranexus.network.gui.OpenGuiPayload;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.PlayerSkinDrawer;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.util.SkinTextures;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
 
@@ -43,6 +48,8 @@ public final class TerraNexusMenuScreen extends Screen {
     private GuiActionButton detailOpenButton;
     private GuiBounds documentPaper;
     private GuiBounds identityCardBounds;
+    private SkinTextures identityPortrait;
+    private String identityPortraitSource = "";
     private int toolbarPage;
     private String layoutIdentity = "";
 
@@ -197,6 +204,7 @@ public final class TerraNexusMenuScreen extends Screen {
         int cardHeight = Math.max(1, Math.round(designHeight * scale));
         identityCardBounds = new GuiBounds((width - cardWidth) / 2, (height - cardHeight) / 2,
                 cardWidth, cardHeight);
+        prepareIdentityPortrait();
         int closeSize = Math.max(12, Math.round(24 * scale));
         addCloseButton(new GuiBounds(identityCardBounds.right() - closeSize - 6,
                 identityCardBounds.y() + 6, closeSize, closeSize));
@@ -643,14 +651,39 @@ public final class TerraNexusMenuScreen extends Screen {
     private void renderIdentityPortrait(DrawContext context) {
         context.fill(37, 68, 158, 221, 0xFF8BA1A1);
         context.fill(41, 72, 154, 217, 0xFFCAD4CF);
-        GuiRenderUtil.sprite(context, ManagementGuiAtlas.icon(GuiIcon.PERSON), 52, 91, 91, 108);
+        if (identityPortrait == null)
+            GuiRenderUtil.sprite(context, ManagementGuiAtlas.icon(GuiIcon.PERSON), 52, 91, 91, 108);
+        else PlayerSkinDrawer.draw(context, identityPortrait, 52, 82, 91);
         context.fill(41, 197, 154, 217, 0x55445758);
         context.drawCenteredTextWithShadow(textRenderer, Text.translatable("gui.terranexus.id.photo"),
                 97, 204, 0xFFF1F4EF);
 
         // Secondary portrait acts as a fictional holographic security element.
-        GuiRenderUtil.sprite(context, ManagementGuiAtlas.icon(GuiIcon.PERSON), 452, 82, 43, 52);
+        if (identityPortrait == null)
+            GuiRenderUtil.sprite(context, ManagementGuiAtlas.icon(GuiIcon.PERSON), 452, 82, 43, 52);
+        else PlayerSkinDrawer.draw(context, identityPortrait, 452, 84, 43);
         context.fill(448, 78, 500, 137, 0x3378C8C1);
+    }
+
+    private void prepareIdentityPortrait() {
+        String source = cardValue(25);
+        if (source.equals(identityPortraitSource)) return;
+        identityPortraitSource = source;
+        identityPortrait = null;
+        CitizenPortraitSnapshot snapshot = CitizenPortraitSnapshot.fromWireValue(source);
+        if (snapshot == null || client == null) return;
+        GameProfile profile = new GameProfile(snapshot.profileId(), "TerraNexus-ID");
+        if (!snapshot.textureValue().isBlank()) {
+            Property property = snapshot.textureSignature().isBlank()
+                    ? new Property("textures", snapshot.textureValue())
+                    : new Property("textures", snapshot.textureValue(), snapshot.textureSignature());
+            profile.getProperties().put("textures", property);
+        }
+        String requestedSource = source;
+        client.getSkinProvider().fetchSkinTextures(profile).thenAccept(result -> client.execute(() -> {
+            if (!identityPortraitSource.equals(requestedSource)) return;
+            identityPortrait = result.orElseGet(() -> client.getSkinProvider().getSkinTextures(profile));
+        }));
     }
 
     private void renderIdentityChip(DrawContext context) {

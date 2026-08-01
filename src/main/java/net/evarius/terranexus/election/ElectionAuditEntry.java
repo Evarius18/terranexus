@@ -1,0 +1,3 @@
+package net.evarius.terranexus.election;
+import com.mojang.serialization.Codec;import com.mojang.serialization.codecs.RecordCodecBuilder;
+public record ElectionAuditEntry(long timestamp,String actorId,String action,String electionId,String details){public static final Codec<ElectionAuditEntry> CODEC=RecordCodecBuilder.create(i->i.group(Codec.LONG.fieldOf("timestamp").forGetter(ElectionAuditEntry::timestamp),Codec.STRING.fieldOf("actor_id").forGetter(ElectionAuditEntry::actorId),Codec.STRING.fieldOf("action").forGetter(ElectionAuditEntry::action),Codec.STRING.fieldOf("election_id").forGetter(ElectionAuditEntry::electionId),Codec.STRING.fieldOf("details").forGetter(ElectionAuditEntry::details)).apply(i,ElectionAuditEntry::new));}

@@ -1,0 +1,1 @@
+{"variants":{"facing=north":{"model":"terranexus:block/bank_atm"},"facing=east":{"model":"terranexus:block/bank_atm","y":90},"facing=south":{"model":"terranexus:block/bank_atm","y":180},"facing=west":{"model":"terranexus:block/bank_atm","y":270}}}

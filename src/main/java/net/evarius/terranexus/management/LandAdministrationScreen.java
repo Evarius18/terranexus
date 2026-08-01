@@ -8,13 +8,13 @@ import net.evarius.terranexus.identity.IdentityState;
 import net.evarius.terranexus.institution.Institution;
 import net.evarius.terranexus.institution.InstitutionState;
 import net.evarius.terranexus.landlord.AdministrativeArea;
+import net.evarius.terranexus.landlord.AdministrationAuditState;
 import net.evarius.terranexus.landlord.LandAuditState;
 import net.evarius.terranexus.landlord.LandManagementState;
 import net.evarius.terranexus.landlord.LandProperty;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -32,7 +32,7 @@ public final class LandAdministrationScreen {
     public static void open(ServerPlayerEntity player) { open(player, 0); }
 
     private static void open(ServerPlayerEntity player, int requestedPage) {
-        if (!AuthorityState.mayAdministerLand(player)) {
+        if (!AuthorityState.mayManageLandHierarchy(player)) {
             player.sendMessage(Text.literal("Bauamtsleitung erforderlich.").formatted(Formatting.RED), false);
             return;
         }
@@ -68,7 +68,7 @@ public final class LandAdministrationScreen {
     }
 
     private static void selectLevel(ServerPlayerEntity player) {
-        if (!AuthorityState.mayAdministerLand(player)) { open(player); return; }
+        if (!AuthorityState.mayManageLandHierarchy(player)) { open(player); return; }
         LandManagementState state = LandManagementState.get(player.getServer());
         List<String> levels = ConfigManager.administration().hierarchyLevels;
         SimpleInventory inventory = new SimpleInventory(54);
@@ -119,8 +119,7 @@ public final class LandAdministrationScreen {
     }
 
     private static void askName(ServerPlayerEntity player, int level, String parentId) {
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, inventory, ignored) ->
-                new TextInputScreenHandler(id, inventory, value -> {
+        TextPromptService.open(player, stateTitle(level), "", value -> {
                     String name = value == null ? "" : value.trim();
                     LandManagementState state = LandManagementState.get(player.getServer());
                     AdministrativeArea created = state.createArea(name, level, parentId, "player", player.getUuidAsString());
@@ -129,11 +128,12 @@ public final class LandAdministrationScreen {
                                 .formatted(Formatting.RED), false);
                     } else {
                         EconomyState.get(player.getServer()).ensureAccount(EconomyState.areaAccount(created.id()));
+                        AdministrationAuditState.get(player.getServer()).log(player.getUuid(),"AREA_CREATE",created.id(),created.name()+" · "+state.levelName(level));
                         player.sendMessage(Text.literal(state.levelName(level) + " „" + created.name() + "“ wurde angelegt.")
                                 .formatted(Formatting.GREEN), false);
                     }
                     open(player);
-                }), Text.literal(stateTitle(level))));
+                }, () -> open(player));
     }
 
     private static void areaDetails(ServerPlayerEntity player, String areaId, int backPage) {
@@ -153,12 +153,24 @@ public final class LandAdministrationScreen {
         if (!area.id().equals(LandManagementState.ROOT_AREA_ID))
             button(inventory, actions, 33, Items.WRITABLE_BOOK, "Verantwortung übertragen",
                     "Bürger oder Institution auswählen", ignored -> selectAreaOwnerType(player, area.id(), backPage));
+        if (!area.id().equals(LandManagementState.ROOT_AREA_ID)) {
+            button(inventory, actions, 28, Items.NAME_TAG, "Umbenennen", area.name(), ignored ->
+                    TextPromptService.open(player,"Verwaltungseinheit umbenennen",area.name(),name->{String old=area.name();if(!LandManagementState.get(player.getServer()).renameArea(area.id(),name))player.sendMessage(Text.literal("Name ist ungültig oder bereits vergeben.").formatted(Formatting.RED),false);else AdministrationAuditState.get(player.getServer()).log(player.getUuid(),"AREA_RENAME",area.id(),old+" -> "+name.trim());areaDetails(player,area.id(),backPage);},()->areaDetails(player,area.id(),backPage)));
+            button(inventory, actions, 30, Items.COMPASS, "Überordnung ändern", parent,
+                    ignored -> selectExistingParent(player,area.id(),backPage,0));
+            button(inventory, actions, 35, Items.BARRIER, "Verwaltungseinheit löschen",
+                    "Nur ohne Untereinheiten, Beschäftigte, Verträge und Kontosaldo", ignored -> confirmDeleteArea(player,area,backPage));
+        }
         button(inventory, actions, 8, Items.ARROW, "Zurück", "Gebietsverwaltung", ignored -> open(player, backPage));
         openMenu(player, inventory, actions, "Verwaltungseinheit");
     }
 
+    private static void selectExistingParent(ServerPlayerEntity player,String areaId,int backPage,int requestedPage){LandManagementState state=LandManagementState.get(player.getServer());AdministrativeArea area=state.area(areaId);if(area==null){open(player,backPage);return;}int top=ConfigManager.administration().hierarchyLevels.size()-1;if(area.level()==top){String old=area.parentId();if(state.moveArea(area.id(),LandManagementState.ROOT_AREA_ID))AdministrationAuditState.get(player.getServer()).log(player.getUuid(),"AREA_MOVE",area.id(),old+" -> "+LandManagementState.ROOT_AREA_ID);areaDetails(player,area.id(),backPage);return;}List<AdministrativeArea> parents=state.areasAtLevel(area.level()+1).stream().filter(parent->!parent.id().equals(area.parentId())).toList();int pages=Math.max(1,(parents.size()+PAGE_SIZE-1)/PAGE_SIZE),page=Math.max(0,Math.min(requestedPage,pages-1));SimpleInventory inventory=new SimpleInventory(54);Map<Integer,Consumer<net.minecraft.entity.player.PlayerEntity>> actions=new HashMap<>();display(inventory,4,Items.COMPASS,"Neue Überordnung",area.name());int start=page*PAGE_SIZE;for(int index=start;index<Math.min(start+PAGE_SIZE,parents.size());index++){AdministrativeArea parent=parents.get(index);button(inventory,actions,9+index-start,Items.FILLED_MAP,parent.name(),state.levelName(parent.level()),ignored->{String old=area.parentId();if(state.moveArea(area.id(),parent.id()))AdministrationAuditState.get(player.getServer()).log(player.getUuid(),"AREA_MOVE",area.id(),old+" -> "+parent.id());else player.sendMessage(Text.literal("Überordnung konnte nicht geändert werden.").formatted(Formatting.RED),false);areaDetails(player,area.id(),backPage);});}if(page>0)button(inventory,actions,45,Items.ARROW,"Vorherige Seite","",ignored->selectExistingParent(player,areaId,backPage,page-1));if(page+1<pages)button(inventory,actions,53,Items.ARROW,"Nächste Seite","",ignored->selectExistingParent(player,areaId,backPage,page+1));button(inventory,actions,49,Items.ARROW,"Zurück","Verwaltungseinheit",ignored->areaDetails(player,areaId,backPage));openMenu(player,inventory,actions,"Überordnung ändern");}
+
+    private static void confirmDeleteArea(ServerPlayerEntity player,AdministrativeArea area,int backPage){SimpleInventory inventory=new SimpleInventory(54);Map<Integer,Consumer<net.minecraft.entity.player.PlayerEntity>> actions=new HashMap<>();display(inventory,4,Items.BARRIER,"Löschen bestätigen",area.name()+" · "+area.id());button(inventory,actions,20,Items.LAVA_BUCKET,"Endgültig löschen","Zugeordnete Flächen wechseln zur übergeordneten Ebene",ignored->{LandManagementState.AreaDeletionResult result=LandManagementState.get(player.getServer()).deleteArea(player,area.id());player.sendMessage(Text.literal(result.message()).formatted(result.success()?Formatting.GREEN:Formatting.RED),false);if(result.success())AdministrationAuditState.get(player.getServer()).log(player.getUuid(),"AREA_DELETE",area.id(),area.name());open(player,backPage);});button(inventory,actions,24,Items.ARROW,"Abbrechen","Einheit behalten",ignored->areaDetails(player,area.id(),backPage));openMenu(player,inventory,actions,"Verwaltungseinheit löschen");}
+
     private static void selectAreaOwnerType(ServerPlayerEntity player, String areaId, int backPage) {
-        if (!AuthorityState.mayAdministerLand(player)) { open(player, backPage); return; }
+        if (!AuthorityState.mayManageLandHierarchy(player)) { open(player, backPage); return; }
         SimpleInventory inventory = new SimpleInventory(54);
         Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
         display(inventory, 4, Items.NAME_TAG, "Neue Verantwortung", "Eigentümerart auswählen");
@@ -218,9 +230,10 @@ public final class LandAdministrationScreen {
     }
 
     private static void assignAreaOwner(ServerPlayerEntity player, String areaId, String ownerType, String ownerId, int backPage) {
-        if (!AuthorityState.mayAdministerLand(player)) { open(player, backPage); return; }
+        if (!AuthorityState.mayManageLandHierarchy(player)) { open(player, backPage); return; }
         if (!LandManagementState.get(player.getServer()).setAreaOwner(player.getServer(), areaId, ownerType, ownerId))
             player.sendMessage(Text.literal("Verantwortung konnte nicht übertragen werden.").formatted(Formatting.RED), false);
+        else AdministrationAuditState.get(player.getServer()).log(player.getUuid(),"AREA_OWNER",areaId,ownerType+":"+ownerId);
         areaDetails(player, areaId, backPage);
     }
 

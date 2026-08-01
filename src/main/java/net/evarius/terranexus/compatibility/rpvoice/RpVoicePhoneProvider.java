@@ -5,16 +5,20 @@ import com.evarius.rpvca.api.PhoneApi;
 import com.evarius.rpvca.api.PhoneStatusView;
 import com.evarius.rpvca.api.RpVcaApi;
 import net.evarius.terranexus.config.ConfigManager;
+import net.evarius.terranexus.identity.CitizenIdentity;
+import net.evarius.terranexus.identity.IdentityState;
 import net.evarius.terranexus.phone.model.EmergencyNumber;
 import net.evarius.terranexus.phone.model.PhoneAction;
 import net.evarius.terranexus.phone.model.PhoneActionResult;
 import net.evarius.terranexus.phone.model.PhoneCallState;
 import net.evarius.terranexus.phone.model.PhoneContact;
 import net.evarius.terranexus.phone.model.PhoneHistoryEntry;
+import net.evarius.terranexus.phone.model.PhoneDirectoryContact;
 import net.evarius.terranexus.phone.model.PhoneSnapshot;
 import net.minecraft.server.network.ServerPlayerEntity;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -77,6 +81,40 @@ public final class RpVoicePhoneProvider implements PhoneFeatureProvider {
         } catch (IllegalArgumentException exception) {
             return PhoneActionResult.rejected("Ungültige Anfrage.");
         }
+    }
+
+    @Override
+    public List<PhoneDirectoryContact> messengerContacts(ServerPlayerEntity player) {
+        PhoneApi api = RpVcaApi.getPhoneService().orElse(null);
+        if (api == null) return List.of();
+        Map<String, String> savedByNumber = new HashMap<>();
+        api.getContacts(player).forEach((name, number) -> {
+            String normalized = normalizeNumber(number);
+            if (!normalized.isEmpty()) savedByNumber.putIfAbsent(normalized, name);
+        });
+        if (savedByNumber.isEmpty()) return List.of();
+        return IdentityState.get(player.getServer()).allApproved().stream()
+                .filter(identity -> !identity.playerUuid().equals(player.getUuidAsString()))
+                .map(identity -> resolvedContact(api, identity, savedByNumber))
+                .filter(java.util.Objects::nonNull)
+                .sorted(Comparator.comparing(PhoneDirectoryContact::name, String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(PhoneDirectoryContact::number))
+                .toList();
+    }
+
+    private static PhoneDirectoryContact resolvedContact(PhoneApi api, CitizenIdentity identity,
+                                                           Map<String, String> savedByNumber) {
+        UUID playerId;
+        try { playerId = UUID.fromString(identity.playerUuid()); }
+        catch (IllegalArgumentException ignored) { return null; }
+        String number = api.getAssignedNumber(playerId).orElse("");
+        String contactName = savedByNumber.get(normalizeNumber(number));
+        return contactName == null ? null : new PhoneDirectoryContact(playerId, contactName, number);
+    }
+
+    private static String normalizeNumber(String number) {
+        if (number == null) return "";
+        return number.trim().replaceAll("[\\s()/-]", "");
     }
 
     private static PhoneActionResult result(boolean successful) {

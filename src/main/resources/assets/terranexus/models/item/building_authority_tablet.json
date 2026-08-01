@@ -2,7 +2,7 @@
 	"credit": "Made with Blockbench",
 	"textures": {
 		"0": "terranexus:item/building_authority_tablet/rgb_sheet",
-		"1": "terranexus:item/land_survey_tool/tasten",
+		"1": "terranexus:item/building_authority_tablet/tasten",
 		"2": "terranexus:item/building_authority_tablet/display",
 		"particle": "terranexus:item/building_authority_tablet/rgb_sheet"
 	},

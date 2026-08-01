@@ -27,6 +27,10 @@ public final class PhoneShellRenderer {
     }
 
     public static void icon(DrawContext context, GuiIcon icon, int x, int y, int size) {
+        if (icon == GuiIcon.CHAT) {
+            chatIcon(context, x, y, size);
+            return;
+        }
         if (icon != GuiIcon.PHONE) {
             GuiRenderUtil.sprite(context, ManagementGuiAtlas.icon(icon), x, y, size, size);
             return;
@@ -37,5 +41,27 @@ public final class PhoneShellRenderer {
         context.getMatrices().scale(scale, scale);
         context.drawItem(new ItemStack(ModItems.MOBILE_PHONE), 0, 0);
         context.getMatrices().popMatrix();
+    }
+
+    private static void chatIcon(DrawContext context, int x, int y, int size) {
+        int inset = Math.max(1, size / 8);
+        int tail = Math.max(2, size / 4);
+        int left = x + inset;
+        int top = y + inset;
+        int right = x + size - inset;
+        int bottom = y + size - inset - tail;
+        int color = 0xFF48D5E4;
+        context.fill(left + 2, top, right - 2, top + 1, color);
+        context.fill(left, top + 2, left + 1, bottom - 1, color);
+        context.fill(right - 1, top + 2, right, bottom - 1, color);
+        context.fill(left + 2, bottom - 1, right - 2, bottom, color);
+        context.fill(left + tail, bottom, left + tail + 2, bottom + tail, color);
+        context.fill(left + tail + 2, bottom, left + tail + 5, bottom + 1, color);
+        int dotY = top + Math.max(3, (bottom - top) / 2);
+        int dotSize = Math.max(1, size / 12);
+        int gap = Math.max(2, size / 5);
+        int center = (left + right) / 2;
+        for (int offset : new int[]{-gap, 0, gap})
+            context.fill(center + offset - dotSize / 2, dotY, center + offset + dotSize, dotY + dotSize, color);
     }
 }

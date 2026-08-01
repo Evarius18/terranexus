@@ -22,8 +22,11 @@ public final class ModItemGroups {
                         entries.add(ModItems.LAND_SURVEY_TOOL);
                         entries.add(ModItems.LAND_REGISTRY_EXTRACT);
                         entries.add(ModItems.MOBILE_PHONE);
+                        entries.add(ModItems.MOBILE_PHONE_GREEN);
+                        entries.add(ModItems.MOBILE_PHONE_RED);
                         entries.add(ModItems.EMPLOYEE_CHIP);
                         entries.add(ModItems.PROPERTY_KEY);
+                        ModItems.CASH.values().forEach(entries::add);
                     }).build());
 
     public static final ItemGroup TERRANEXUS_BLOCKS_GROUP = Registry.register(Registries.ITEM_GROUP,
@@ -33,6 +36,7 @@ public final class ModItemGroups {
                     .entries((displayContext, entries) -> {
                         entries.add(ModBlocks.MANAGEMENT_COMPUTER);
                         entries.add(ModBlocks.TIME_CLOCK_TERMINAL);
+                        entries.add(ModBlocks.BANK_ATM);
                     }).build());
 
     private ModItemGroups() {}

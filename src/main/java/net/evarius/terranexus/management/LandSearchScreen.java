@@ -14,7 +14,6 @@ import net.evarius.terranexus.institution.Institution;
 import net.evarius.terranexus.institution.InstitutionState;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Items;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;

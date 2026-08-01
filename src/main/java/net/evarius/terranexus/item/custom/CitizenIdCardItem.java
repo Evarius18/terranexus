@@ -1,6 +1,7 @@
 package net.evarius.terranexus.item.custom;
 
 import net.evarius.terranexus.identity.CitizenIdentity;
+import net.evarius.terranexus.identity.CitizenPortraitSnapshot;
 import net.evarius.terranexus.identity.IdentityState;
 import net.evarius.terranexus.identity.IdentityScreen;
 import net.minecraft.component.DataComponentTypes;
@@ -26,12 +27,15 @@ public class CitizenIdCardItem extends Item {
         super(settings);
     }
 
-    public static ItemStack createCard(Item item, CitizenIdentity identity) {
+    public static ItemStack createCard(Item item, CitizenIdentity identity,
+                                       com.mojang.authlib.GameProfile subjectProfile) {
         ItemStack stack = new ItemStack(item);
         NbtCompound data = new NbtCompound();
         data.putString("citizen_uuid", identity.playerUuid());
         data.putString("citizen_number", identity.citizenNumber());
         data.putString("display_name", identity.firstName() + " " + identity.lastName());
+        data.putLong("issued_at", System.currentTimeMillis());
+        CitizenPortraitSnapshot.capture(subjectProfile).write(data);
         NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, data);
         stack.set(DataComponentTypes.CUSTOM_NAME,
                 Text.literal("Personalausweis – " + identity.firstName() + " " + identity.lastName()).formatted(Formatting.AQUA));
@@ -45,7 +49,8 @@ public class CitizenIdCardItem extends Item {
             if (identity == null) {
                 user.sendMessage(Text.literal("Dieser Ausweis ist ungültig oder wurde widerrufen.").formatted(Formatting.RED), false);
             } else {
-                IdentityScreen.open((net.minecraft.server.network.ServerPlayerEntity) user, identity);
+                IdentityScreen.open((net.minecraft.server.network.ServerPlayerEntity) user, identity,
+                        portrait(user.getStackInHand(hand)));
             }
         }
         return ActionResult.SUCCESS;
@@ -74,6 +79,11 @@ public class CitizenIdCardItem extends Item {
         } catch (IllegalArgumentException exception) {
             return null;
         }
+    }
+
+    private static CitizenPortraitSnapshot portrait(ItemStack stack) {
+        NbtComponent component = stack.get(DataComponentTypes.CUSTOM_DATA);
+        return component == null ? null : CitizenPortraitSnapshot.read(component.copyNbt());
     }
 
     public static void sendIdentity(PlayerEntity player, CitizenIdentity identity) {

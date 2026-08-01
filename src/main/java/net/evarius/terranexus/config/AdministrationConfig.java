@@ -10,7 +10,7 @@ public final class AdministrationConfig {
     public String wildernessName = "Wilderness";
     public String wildernessLevelName = "Oberste Verwaltung";
     public List<String> hierarchyLevels = new ArrayList<>(List.of(
-            "Ort / Stadt", "Gemeinde", "Landkreis", "Region", "Bundesland", "Staat"
+            "Gemeinde", "Stadt", "Landkreis", "Bundesland", "Land"
     ));
     public int maximumAdministrativeAreas = 10_000;
     public int maximumAreaNameLength = 80;

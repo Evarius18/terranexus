@@ -11,7 +11,6 @@ import net.evarius.terranexus.landlord.ResidentialUnit;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -36,6 +35,7 @@ public final class ResidentialBuildingScreen {
         if (!mayManage(player, latest(player, property.id()))) { denied(player); return; }
         LandManagementState state = LandManagementState.get(player.getServer());
         List<ResidentialBuilding> buildings = state.residentialBuildings().stream()
+                .filter(building -> building.propertyId().isBlank() || building.propertyId().equals(property.id()))
                 .filter(building -> state.mayManageResidentialBuilding(player, building.id())).toList();
         int pageSize = Math.min(36, ConfigManager.desktop().standardEntriesPerPage);
         int pages = Math.max(1, (buildings.size() + pageSize - 1) / pageSize);
@@ -55,8 +55,11 @@ public final class ResidentialBuildingScreen {
         int slot = 9;
         for (ResidentialBuilding building : buildings.subList(page * pageSize,
                 Math.min(buildings.size(), (page + 1) * pageSize))) {
-            long apartments = state.units(building.id()).stream().filter(unit -> !unit.commonArea()).count();
-            long commonAreas = state.units(building.id()).size() - apartments;
+            List<net.evarius.terranexus.landlord.PropertySubarea> internal =
+                    net.evarius.terranexus.landlord.PropertySubareaState.get(player.getServer()).forBuilding(building.id());
+            long apartments = state.units(building.id()).stream().filter(unit -> !unit.commonArea()).count()
+                    + internal.stream().filter(unit -> !isCommonArea(unit.type())).count();
+            long commonAreas = state.units(building.id()).size() + internal.size() - apartments;
             button(inventory, actions, slot++, Items.BRICKS, building.name(),
                     apartments + " Wohnung(en) · " + commonAreas + " Gemeinschaftsbereich(e)",
                     ignored -> assignmentType(player, property, building));
@@ -69,7 +72,7 @@ public final class ResidentialBuildingScreen {
             LandProperty current = latest(player, property.id());
             if (!mayManage(player, current)) { denied(player); return; }
             ResidentialBuilding created = LandManagementState.get(player.getServer())
-                    .createResidentialBuilding(player, value);
+                    .createResidentialBuilding(player, value, property.id());
             if (created == null) {
                 error(player, "Gebäudename ist ungültig oder bereits vergeben.");
                 selectBuilding(player, current, 0);
@@ -203,12 +206,16 @@ public final class ResidentialBuildingScreen {
         return java.util.Arrays.stream(value.split("[/>]"))
                 .map(String::trim).filter(segment -> !segment.isBlank()).limit(8).toList();
     }
+    private static boolean isCommonArea(String type) {
+        String normalized = type == null ? "" : type.toLowerCase(java.util.Locale.ROOT);
+        return normalized.contains("gemeinschaft") || normalized.contains("flur")
+                || normalized.contains("treppen") || normalized.contains("tiefgarage");
+    }
     private static boolean mayManage(ServerPlayerEntity player, LandProperty property) {
         return LandPermissionService.mayExerciseOwnerRights(player, property);
     }
     private static void input(ServerPlayerEntity player, String title, Consumer<String> done) {
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, inventory, ignored) ->
-                new TextInputScreenHandler(id, inventory, done), Text.literal(title).formatted(Formatting.DARK_GREEN)));
+        TextPromptService.open(player, title, done);
     }
     private static void display(SimpleInventory inventory, int slot, Item item, String name, String detail) {
         ManagementHubScreen.display(inventory, slot, item, name, detail);

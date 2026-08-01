@@ -176,6 +176,12 @@ public class LandManagementState extends PersistentState {
         return true;
     }
 
+    public boolean renameArea(String areaId,String name){AdministrativeArea area=areas.get(areaId);String clean=name==null?"":name.trim();if(area==null||ROOT_AREA_ID.equals(areaId)||clean.isBlank()||clean.length()>ConfigManager.administration().maximumAreaNameLength||areas.values().stream().anyMatch(other->!other.id().equals(areaId)&&other.level()==area.level()&&other.parentId().equals(area.parentId())&&other.name().equalsIgnoreCase(clean)))return false;areas.put(areaId,new AdministrativeArea(area.id(),clean,area.type(),area.parentId(),area.ownerType(),area.ownerId(),area.level()));invalidateAreas();markDirty();return true;}
+    public boolean moveArea(String areaId,String parentId){AdministrativeArea area=areas.get(areaId);if(area==null||ROOT_AREA_ID.equals(areaId))return false;String target=parentId==null||parentId.isBlank()?ROOT_AREA_ID:parentId;AdministrativeArea parent=areas.get(target);int top=ConfigManager.administration().hierarchyLevels.size()-1;boolean valid=area.level()==top?ROOT_AREA_ID.equals(target):parent!=null&&parent.level()==area.level()+1;if(!valid||areas.values().stream().anyMatch(other->!other.id().equals(areaId)&&other.level()==area.level()&&other.parentId().equals(target)&&other.name().equalsIgnoreCase(area.name())))return false;areas.put(areaId,new AdministrativeArea(area.id(),area.name(),area.type(),target,area.ownerType(),area.ownerId(),area.level()));invalidateAreas();markDirty();return true;}
+
+    public AreaDeletionResult deleteArea(ServerPlayerEntity actor,String areaId){if(!AuthorityState.mayManageLandHierarchy(actor))return new AreaDeletionResult(false,"Berechtigung zur Verwaltungshierarchie erforderlich.");AdministrativeArea area=areas.get(areaId);if(area==null||ROOT_AREA_ID.equals(areaId))return new AreaDeletionResult(false,"Die oberste Verwaltungsebene kann nicht gelöscht werden.");if(!children(areaId).isEmpty())return new AreaDeletionResult(false,"Untergeordnete Verwaltungseinheiten müssen zuerst verschoben oder gelöscht werden.");if(areaEmployees.values().stream().anyMatch(employee->employee.areaId().equals(areaId)))return new AreaDeletionResult(false,"Beschäftigte müssen vor dem Löschen aus der Verwaltungseinheit entfernt werden.");String account=EconomyState.areaAccount(areaId);EconomyState economy=EconomyState.get(actor.getServer());if(economy.balance(account)!=0)return new AreaDeletionResult(false,"Das Gebietskonto muss einen Saldo von 0 besitzen.");if(sales.values().stream().anyMatch(offer->offer.sellerAccount().equals(account))||leases.values().stream().anyMatch(lease->lease.landlordAccount().equals(account)||lease.depositAccount().equals(account)))return new AreaDeletionResult(false,"Verkaufsangebote und Mietverträge der Verwaltungseinheit müssen zuerst beendet werden.");String parent=areas.containsKey(area.parentId())?area.parentId():ROOT_AREA_ID;LandlordState.get(actor.getServer()).releaseAreaOwnership(areaId,parent);propertyAreas.replaceAll((property,assigned)->assigned.equals(areaId)?parent:assigned);areas.remove(areaId);economy.closeEmptyAccount(account);invalidateAreas();markDirty();return new AreaDeletionResult(true,"Verwaltungseinheit wurde gelöscht; zugeordnete Flächen wurden der übergeordneten Ebene zugewiesen.");}
+    public record AreaDeletionResult(boolean success,String message){}
+
     /** Compatibility entry point for older callers and data-oriented integrations. */
     public AdministrativeArea createArea(String name, String type, String parent, String ownerType, String ownerId) {
         return createArea(name, configuredLevel(type), parent, ownerType, ownerId);
@@ -313,11 +319,17 @@ public class LandManagementState extends PersistentState {
     }
 
     public ResidentialBuilding createResidentialBuilding(ServerPlayerEntity actor, String name) {
+        return createResidentialBuilding(actor, name, "");
+    }
+
+    public ResidentialBuilding createResidentialBuilding(ServerPlayerEntity actor, String name, String propertyId) {
         String normalized = name == null ? "" : name.trim();
+        String parent = propertyId == null ? "" : propertyId.trim();
         if (normalized.isBlank() || normalized.length() > ConfigManager.claims().maximumPropertyNameLength
+                || (!parent.isBlank() && LandlordState.get(actor.getServer()).get(parent) == null)
                 || residentialBuildings.values().stream().anyMatch(value -> value.name().equalsIgnoreCase(normalized)))
             return null;
-        ResidentialBuilding building = new ResidentialBuilding(UUID.randomUUID().toString(), normalized,
+        ResidentialBuilding building = new ResidentialBuilding(UUID.randomUUID().toString(), normalized, parent,
                 actor.getUuidAsString(), System.currentTimeMillis());
         residentialBuildings.put(building.id(), building);
         markDirty();
@@ -376,7 +388,8 @@ public class LandManagementState extends PersistentState {
     }
 
     public boolean removeResidentialBuilding(ServerPlayerEntity actor, String buildingId) {
-        if (!mayManageResidentialBuilding(actor, buildingId) || !units(buildingId).isEmpty()) return false;
+        if (!mayManageResidentialBuilding(actor, buildingId) || !units(buildingId).isEmpty()
+                || !PropertySubareaState.get(actor.getServer()).forBuilding(buildingId).isEmpty()) return false;
         boolean changed = residentialBuildings.remove(buildingId) != null;
         if (changed) markDirty();
         return changed;
@@ -444,6 +457,38 @@ public class LandManagementState extends PersistentState {
     public boolean isEmployed(UUID playerId) {
         String id = playerId.toString();
         return areaEmployees.values().stream().anyMatch(employee -> employee.playerUuid().equals(id));
+    }
+
+    public boolean hasCitizenBlockingLinks(UUID playerId) {
+        String id = playerId.toString();
+        return areas.values().stream().anyMatch(area -> "player".equals(area.ownerType()) && id.equals(area.ownerId()))
+                || leases.values().stream().anyMatch(lease -> lease.active() && id.equals(lease.tenantId()));
+    }
+
+    public synchronized int removeCitizenReferences(UUID playerId, Collection<String> releasedPropertyIds) {
+        String id = playerId.toString();
+        int changed = 0;
+        if (areaEmployees.values().removeIf(employee -> employee.playerUuid().equals(id))) changed++;
+        for (Map.Entry<String, LandAccess> entry : new ArrayList<>(access.entrySet())) {
+            LandAccess old = entry.getValue();
+            if (!old.grants().containsKey(id)) continue;
+            Map<String, List<String>> grants = new HashMap<>(old.grants());
+            grants.remove(id);
+            access.put(entry.getKey(), new LandAccess(old.propertyId(), Map.copyOf(grants), old.publicRules()));
+            changed++;
+        }
+        if (containerLocks.entrySet().removeIf(entry -> entry.getValue().ownerId().equals(id))) changed++;
+        for (Map.Entry<String, ContainerLock> entry : new ArrayList<>(containerLocks.entrySet())) {
+            ContainerLock old = entry.getValue();
+            if (!old.permittedPlayers().contains(id)) continue;
+            containerLocks.put(entry.getKey(), old.revoke(id));
+            changed++;
+        }
+        for (String propertyId : releasedPropertyIds) {
+            if (sales.remove(propertyId) != null) changed++;
+        }
+        if (changed > 0) markDirty();
+        return changed;
     }
 
     public static long periodMillis(int days) {

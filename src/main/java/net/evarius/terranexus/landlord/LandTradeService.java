@@ -3,6 +3,7 @@ package net.evarius.terranexus.landlord;
 import net.evarius.terranexus.config.ConfigManager;
 import net.evarius.terranexus.economy.EconomyState;
 import net.evarius.terranexus.identity.IdentityState;
+import net.evarius.terranexus.identity.AuthorityState;
 import net.evarius.terranexus.institution.InstitutionAccess;
 import net.evarius.terranexus.institution.InstitutionPermission;
 import net.evarius.terranexus.item.ModItems;
@@ -65,6 +66,29 @@ public final class LandTradeService {
         if (!mayManageCommercially(actor, property)) return Result.fail("Keine Verkaufsberechtigung.");
         LandManagementState.get(actor.getServer()).cancelSale(propertyId);
         return Result.ok("Kaufangebot wurde entfernt.");
+    }
+
+    public static Result offerSaleByLandOffice(ServerPlayerEntity actor, String propertyId, long price) {
+        if (!AuthorityState.mayAdministerLand(actor)) return Result.fail("Bauamtsleitung erforderlich.");
+        LandManagementState management = LandManagementState.get(actor.getServer());
+        LandProperty property = LandlordState.get(actor.getServer()).get(propertyId);
+        if (property == null) return Result.fail("Das Grundstück existiert nicht mehr.");
+        if (price <= 0 || price > ConfigManager.economy().maximumTransferAmount) return Result.fail("Ungültiger Kaufpreis.");
+        LandLease lease = management.lease(propertyId);
+        if (lease != null && lease.active()) return Result.fail("Ein aktiv vermietetes Grundstück kann nicht verkauft werden.");
+        management.offerSale(new LandSaleOffer(propertyId, ownerAccount(property), price,
+                System.currentTimeMillis(), actor.getUuidAsString()));
+        LandAuditState.get(actor.getServer()).log(actor.getUuid(), "SALE_RELEASE", property, String.valueOf(price));
+        return Result.ok("Das Bauamt hat das Grundstück zum Verkauf freigegeben.");
+    }
+
+    public static Result cancelSaleByLandOffice(ServerPlayerEntity actor, String propertyId) {
+        if (!AuthorityState.mayAdministerLand(actor)) return Result.fail("Bauamtsleitung erforderlich.");
+        LandProperty property = LandlordState.get(actor.getServer()).get(propertyId);
+        if (property == null) return Result.fail("Das Grundstück existiert nicht mehr.");
+        LandManagementState.get(actor.getServer()).cancelSale(propertyId);
+        LandAuditState.get(actor.getServer()).log(actor.getUuid(), "SALE_RELEASE_CANCEL", property, property.name());
+        return Result.ok("Die amtliche Verkaufsfreigabe wurde aufgehoben.");
     }
 
     public static Result buy(ServerPlayerEntity buyer, String propertyId) {

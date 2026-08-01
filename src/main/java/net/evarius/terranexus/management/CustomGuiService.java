@@ -7,6 +7,7 @@ import net.evarius.terranexus.network.gui.GuiAction;
 import net.evarius.terranexus.network.gui.GuiActionPayload;
 import net.evarius.terranexus.network.gui.GuiIcon;
 import net.evarius.terranexus.network.gui.GuiMenuElement;
+import net.evarius.terranexus.network.gui.GuiTextActionPayload;
 import net.evarius.terranexus.network.gui.OpenGuiPayload;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -40,8 +41,11 @@ public final class CustomGuiService {
         PayloadTypeRegistry.playS2C().register(OpenGuiPayload.ID, OpenGuiPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(CloseGuiPayload.ID, CloseGuiPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(GuiActionPayload.ID, GuiActionPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(GuiTextActionPayload.ID, GuiTextActionPayload.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(GuiActionPayload.ID,
                 (payload, context) -> handle(context.player(), payload));
+        ServerPlayNetworking.registerGlobalReceiver(GuiTextActionPayload.ID,
+                (payload, context) -> handleText(context.player(), payload));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             Session session = SESSIONS.remove(handler.player.getUuid());
             runCloseHandler(session);
@@ -70,31 +74,60 @@ public final class CustomGuiService {
         open(player, inventory, actions, title, null, 0, null);
     }
 
+    public static void openWithTextActions(ServerPlayerEntity player, SimpleInventory inventory,
+                                           Map<Integer, Consumer<PlayerEntity>> actions,
+                                           Map<Integer, Consumer<String>> textActions, Text title) {
+        open(player, inventory, actions, textActions, title, null, 0, null);
+    }
+
     public static void openWithCloseHandler(ServerPlayerEntity player, SimpleInventory inventory,
                                             Map<Integer, Consumer<PlayerEntity>> actions, Text title,
                                             Runnable closeHandler) {
-        open(player, inventory, actions, title, null, 0, closeHandler);
+        open(player, inventory, actions, Map.of(), title, null, 0, closeHandler);
     }
 
     public static void openLive(ServerPlayerEntity player, SimpleInventory inventory,
                                 Map<Integer, Consumer<PlayerEntity>> actions, Text title,
                                 Runnable refresh, int refreshTicks) {
-        open(player, inventory, actions, title, refresh, Math.max(1, refreshTicks), null);
+        open(player, inventory, actions, Map.of(), title, refresh, Math.max(1, refreshTicks), null);
     }
 
     private static void open(ServerPlayerEntity player, SimpleInventory inventory,
                              Map<Integer, Consumer<PlayerEntity>> actions, Text title,
                              Runnable refresh, int refreshTicks, Runnable closeHandler) {
+        open(player, inventory, actions, Map.of(), title, refresh, refreshTicks, closeHandler);
+    }
+
+    private static void open(ServerPlayerEntity player, SimpleInventory inventory,
+                             Map<Integer, Consumer<PlayerEntity>> actions, Map<Integer, Consumer<String>> textActions,
+                             Text title, Runnable refresh, int refreshTicks, Runnable closeHandler) {
         if (!ServerPlayNetworking.canSend(player, OpenGuiPayload.ID)) {
             player.sendMessage(Text.translatable("gui.terranexus.client_required").formatted(Formatting.RED), false);
             return;
         }
         String token = UUID.randomUUID().toString();
-        Session session = new Session(player.getUuid(), token, inventory, Map.copyOf(actions),
+        Session session = new Session(player.getUuid(), token, inventory, Map.copyOf(actions), Map.copyOf(textActions),
                 title.copy(), refresh, refreshTicks, ticks + refreshTicks, closeHandler);
         Session previous = SESSIONS.put(player.getUuid(), session);
         runCloseHandler(previous);
         send(player, session);
+    }
+
+    private static void handleText(ServerPlayerEntity player, GuiTextActionPayload payload) {
+        Session session = SESSIONS.get(player.getUuid());
+        Consumer<String> handler = session == null ? null : session.textActions.get(payload.elementId());
+        if (session == null || !session.token.equals(payload.sessionToken()) || handler == null) {
+            AuditLogger.denied(player, "custom_gui", "invalid_text_action");
+            return;
+        }
+        SESSIONS.remove(player.getUuid());
+        try { handler.accept(payload.value() == null ? "" : payload.value()); }
+        catch (RuntimeException exception) {
+            TerraNexus.LOGGER.error("Custom-GUI-Texteingabe fehlgeschlagen: Spieler={} Element={} Titel={}",
+                    player.getUuidAsString(), payload.elementId(), session.title.getString(), exception);
+            runCloseHandler(session);
+        }
+        if (!SESSIONS.containsKey(player.getUuid())) close(player, session.token);
     }
 
     private static void handle(ServerPlayerEntity player, GuiActionPayload payload) {
@@ -135,7 +168,7 @@ public final class CustomGuiService {
 
     private static void send(ServerPlayerEntity player, Session session) {
         ServerPlayNetworking.send(player, new OpenGuiPayload(session.token, session.title,
-                elements(session.inventory, session.actions)));
+                elements(session.inventory, session.actions, session.textActions)));
     }
 
     private static void close(ServerPlayerEntity player, String token) {
@@ -149,7 +182,8 @@ public final class CustomGuiService {
     }
 
     private static List<GuiMenuElement> elements(SimpleInventory inventory,
-                                                  Map<Integer, Consumer<PlayerEntity>> actions) {
+                                                  Map<Integer, Consumer<PlayerEntity>> actions,
+                                                  Map<Integer, Consumer<String>> textActions) {
         List<GuiMenuElement> result = new ArrayList<>();
         for (int slot = 0; slot < Math.min(54, inventory.size()); slot++) {
             ItemStack stack = inventory.getStack(slot);
@@ -158,7 +192,7 @@ public final class CustomGuiService {
             Text tooltip = lore == null ? Text.empty() : joinLines(lore.lines());
             boolean selected = stack.isOf(Items.LIME_CONCRETE) || stack.isOf(Items.LIME_STAINED_GLASS_PANE);
             result.add(new GuiMenuElement(slot, GuiIcon.fromItem(stack.getItem()).name(),
-                    stack.getName().copy(), tooltip, actions.containsKey(slot), selected));
+                    stack.getName().copy(), tooltip, actions.containsKey(slot) || textActions.containsKey(slot), selected));
         }
         return List.copyOf(result);
     }
@@ -186,6 +220,7 @@ public final class CustomGuiService {
         private final String token;
         private final SimpleInventory inventory;
         private final Map<Integer, Consumer<PlayerEntity>> actions;
+        private final Map<Integer, Consumer<String>> textActions;
         private final Text title;
         private final Runnable refresh;
         private final int refreshTicks;
@@ -193,12 +228,13 @@ public final class CustomGuiService {
         private long nextRefreshTick;
 
         private Session(UUID playerId, String token, SimpleInventory inventory,
-                        Map<Integer, Consumer<PlayerEntity>> actions, Text title,
+                        Map<Integer, Consumer<PlayerEntity>> actions, Map<Integer, Consumer<String>> textActions, Text title,
                         Runnable refresh, int refreshTicks, long nextRefreshTick, Runnable closeHandler) {
             this.playerId = playerId;
             this.token = token;
             this.inventory = inventory;
             this.actions = actions;
+            this.textActions = textActions;
             this.title = title;
             this.refresh = refresh;
             this.refreshTicks = refreshTicks;

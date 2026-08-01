@@ -70,6 +70,12 @@ public final class ShopState extends PersistentState {
         return true;
     }
 
+    public int removeOwnedBy(String ownerType, String ownerId) {
+        List<String> ids = ownedBy(ownerType, ownerId).stream().map(ShopRecord::id).toList();
+        ids.forEach(this::remove);
+        return ids.size();
+    }
+
     private ShopRecord byIndex(Map<String, String> index, String dimension, BlockPos pos) {
         String id = index.get(key(dimension, pos));
         return id == null ? null : shops.get(id);

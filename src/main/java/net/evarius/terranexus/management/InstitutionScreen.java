@@ -7,7 +7,6 @@ import net.evarius.terranexus.institution.Institution;
 import net.evarius.terranexus.institution.InstitutionState;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Items;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -56,8 +55,7 @@ public final class InstitutionScreen {
     private static void createStep(ServerPlayerEntity player, List<String> values, int step) {
         if (!mayCreate(player)) { denied(player); home(player); return; }
         if (step == 1) { selectType(player, values); return; }
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory((syncId, inv, ignored) ->
-                new TextInputScreenHandler(syncId, inv, value -> {
+        TextPromptService.open(player, "Name der Institution", "", value -> {
                     value = value == null ? "" : value.trim();
                     int maximumLength = ConfigManager.institutions().maximumNameLength;
                     if (value.isBlank() || value.length() > maximumLength || !InstitutionState.get(player.getServer()).isNameAvailable(value)) {
@@ -67,7 +65,7 @@ public final class InstitutionScreen {
                         createStep(player, new ArrayList<>(), 0); return;
                     }
                     values.add(value); createStep(player, values, 1);
-                }), Text.literal("Name der Institution").formatted(Formatting.DARK_AQUA)));
+                }, () -> open(player));
     }
 
     private static void selectType(ServerPlayerEntity player, List<String> values) {

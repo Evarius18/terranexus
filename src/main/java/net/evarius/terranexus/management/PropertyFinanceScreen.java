@@ -9,7 +9,6 @@ import net.evarius.terranexus.institution.InstitutionState;
 import net.evarius.terranexus.landlord.*;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Items;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -73,13 +72,22 @@ public final class PropertyFinanceScreen {
     private static void integerAllowZero(ServerPlayerEntity player,String title,Consumer<Integer> done){input(player,title,value->{try{int parsed=Integer.parseInt(value);if(parsed<0)throw new NumberFormatException();done.accept(parsed);}catch(Exception e){error(player,"Bitte null oder eine positive ganze Zahl eingeben.");back(player);}});}
     private static void showResult(ServerPlayerEntity player,LandTradeService.Result result){player.sendMessage(Text.literal(result.message()).formatted(result.success()?Formatting.GREEN:Formatting.RED),false);}
     private static void openLatest(ServerPlayerEntity player,String propertyId){LandProperty current=LandlordState.get(player.getServer()).get(propertyId);if(current==null)back(player);else open(player,current);}
-    private static void input(ServerPlayerEntity player,String title,Consumer<String> done){player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id,inventory,ignored)->new TextInputScreenHandler(id,inventory,done),Text.literal(title)));}
+    private static void input(ServerPlayerEntity player,String title,Consumer<String> done){TextPromptService.open(player,title,done);}
     private static void error(ServerPlayerEntity player,String message){player.sendMessage(Text.literal(message).formatted(Formatting.RED),false);}
     private static void button(SimpleInventory inventory,Map<Integer,Consumer<net.minecraft.entity.player.PlayerEntity>> actions,int slot,net.minecraft.item.Item item,String name,String detail,Consumer<net.minecraft.entity.player.PlayerEntity> action){ManagementHubScreen.display(inventory,slot,item,name,detail);actions.put(slot,action);}
     private static void openMenu(ServerPlayerEntity player,SimpleInventory inventory,Map<Integer,Consumer<net.minecraft.entity.player.PlayerEntity>> actions,String title){CustomGuiService.open(player,inventory,actions,Text.literal(title).formatted(Formatting.DARK_GREEN));}
-    private static void back(ServerPlayerEntity player){if(AuthorityState.mayUseLandOffice(player))PropertyScreen.open(player);else LandRegistryScreen.open(player);}
+    private static void back(ServerPlayerEntity player){
+        if(AuthorityState.mayUseLandOffice(player)){
+            if(player.getInventory().contains(new net.minecraft.item.ItemStack(net.evarius.terranexus.item.ModItems.BUILDING_AUTHORITY_TABLET)))PropertyScreen.open(player);
+            else LandOfficeOverviewScreen.open(player);
+        }else LandRegistryScreen.open(player);
+    }
     private static void back(ServerPlayerEntity player,LandProperty property){
-        if(AuthorityState.mayUseLandOffice(player)){PropertyScreen.open(player);return;}
+        if(AuthorityState.mayUseLandOffice(player)){
+            if(player.getInventory().contains(new net.minecraft.item.ItemStack(net.evarius.terranexus.item.ModItems.BUILDING_AUTHORITY_TABLET)))PropertyScreen.open(player);
+            else LandOfficeOverviewScreen.open(player);
+            return;
+        }
         if(property!=null&&property.ownerType().equals("institution")
                 &&(AuthorityState.isAdministrator(player)||InstitutionState.get(player.getServer()).mayManage(property.ownerId(),player.getUuid()))){
             InstitutionManagementScreen.open(player,property.ownerId());return;

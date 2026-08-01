@@ -33,6 +33,11 @@ public final class TerraNexusSearchScreen extends Screen {
 
     public void updateStatus(SearchStatusPayload status) {
         if (!belongsTo(status.token())) return;
+        if (status.state().equals("CLOSED")) {
+            serverFinished = true;
+            if (client != null && client.currentScreen == this) client.setScreen(null);
+            return;
+        }
         state = status.state().equals("ERROR") ? SearchState.ERROR : SearchState.INITIAL;
         statusMessage = status.message();
         if (field != null) {

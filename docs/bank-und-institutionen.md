@@ -87,3 +87,10 @@ Alle Oberflächen sind serverautoritativ und lesen PersistentStates beim Öffnen
 einer Aktion erneut. Die zentrale Rollenmatrix liegt in `InstitutionRole` und `InstitutionPermission`; die
 Prüfung erfolgt über `InstitutionAccess`. Bestehende APIs wie `EconomyState.transfer`, Institutionskontoschlüssel
 und `InstitutionState.mayManage` bleiben kompatibel.
+
+## Bankautomat
+
+Einzahlungen akzeptieren weiterhin alle registrierten Münzen und Scheine. Auszahlungen verwenden dagegen
+ausschließlich Geldscheine ab 5 Nexus und verlangen daher einen Betrag in 5-Nexus-Schritten. Der Automat
+zerlegt den Betrag absteigend in die Euro-ähnlichen Scheinwerte und erzeugt damit die minimale Anzahl Scheine;
+vor der Kontobuchung werden Darstellbarkeit und Inventarkapazität geprüft.

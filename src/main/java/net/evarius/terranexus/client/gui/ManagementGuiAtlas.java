@@ -24,6 +24,7 @@ public final class ManagementGuiAtlas {
 
     public static Sprite icon(GuiIcon icon) {
         if (icon == GuiIcon.PHONE) return icon(GuiIcon.HOME);
+        if (icon == GuiIcon.CHAT) return icon(GuiIcon.DOCUMENT);
         int index = icon.ordinal();
         return new Sprite(ICON_X[index % 4], ICON_Y[index / 4], ICON_WIDTH, ICON_HEIGHT);
     }

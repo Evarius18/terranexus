@@ -23,7 +23,7 @@ public final class AuthorityCommands {
                                     ServerPlayerEntity player = EntityArgumentType.getPlayer(context, "player");
                                     String role = StringArgumentType.getString(context, "role").toLowerCase();
                                     if (!AuthorityState.isKnownRole(role)) {
-                                        context.getSource().sendError(Text.literal("Rollen: admin, supporter, whitelister, builder, civil_registrar, immigration_officer, land_surveyor, land_clerk, land_administrator (land_registrar bleibt kompatibel)"));
+                                        context.getSource().sendError(Text.literal("Unbekannte Rolle. Verfügbar: " + String.join(", ", AuthorityState.knownRoles())));
                                         return 0;
                                     }
                                     AuthorityState.get(context.getSource().getServer()).grant(player.getUuid(), role);

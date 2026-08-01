@@ -1,0 +1,3 @@
+package net.evarius.terranexus.election;
+import net.evarius.terranexus.phone.PhoneApplication;import net.minecraft.item.Item;import net.minecraft.item.Items;import net.minecraft.server.network.ServerPlayerEntity;import net.minecraft.text.Text;
+public final class ElectionApplication implements PhoneApplication {public String id(){return"terranexus:elections";}public Text title(){return Text.translatable("gui.terranexus.phone.elections");}public Text description(){return Text.translatable("gui.terranexus.phone.elections.description");}public Item icon(){return Items.BELL;}public void open(ServerPlayerEntity player){ElectionScreen.open(player,0);}}

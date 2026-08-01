@@ -9,8 +9,11 @@ import net.evarius.terranexus.item.custom.LandRegistryExtractItem;
 import net.evarius.terranexus.item.custom.MobilePhoneItem;
 import net.evarius.terranexus.item.custom.EmployeeChipItem;
 import net.evarius.terranexus.item.custom.PropertyKeyItem;
+import net.evarius.terranexus.item.custom.CashItem;
+import net.evarius.terranexus.economy.CashDenomination;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemGroups;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
@@ -18,6 +21,8 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
 import java.util.function.Function;
+import java.util.EnumMap;
+import java.util.Map;
 
 public class ModItems {
     public static final Item CITIZEN_ID_CARD = registerItem("citizen_id_card",
@@ -32,10 +37,23 @@ public class ModItems {
             new Item.Settings().maxCount(1), LandRegistryExtractItem::new);
     public static final Item MOBILE_PHONE = registerItem("mobile_phone",
             new Item.Settings().maxCount(1), MobilePhoneItem::new);
+    public static final Item MOBILE_PHONE_GREEN = registerItem("mobile_phone_green",
+            new Item.Settings().maxCount(1), MobilePhoneItem::new);
+    public static final Item MOBILE_PHONE_RED = registerItem("mobile_phone_red",
+            new Item.Settings().maxCount(1), MobilePhoneItem::new);
     public static final Item EMPLOYEE_CHIP = registerItem("employee_chip",
             new Item.Settings().maxCount(1), EmployeeChipItem::new);
     public static final Item PROPERTY_KEY = registerItem("property_key",
             new Item.Settings().maxCount(1), PropertyKeyItem::new);
+    public static final Map<CashDenomination, Item> CASH = registerCash();
+
+    private static Map<CashDenomination, Item> registerCash() {
+        EnumMap<CashDenomination, Item> result = new EnumMap<>(CashDenomination.class);
+        for (CashDenomination denomination : CashDenomination.values())
+            result.put(denomination, registerItem(denomination.id(), new Item.Settings(),
+                    settings -> new CashItem(settings, denomination)));
+        return Map.copyOf(result);
+    }
 
     private static Item registerItem(String name) {
         return registerItem(name, new Item.Settings(), Item::new);
@@ -58,8 +76,16 @@ public class ModItems {
             entries.add(LAND_SURVEY_TOOL);
             entries.add(LAND_REGISTRY_EXTRACT);
             entries.add(MOBILE_PHONE);
+            entries.add(MOBILE_PHONE_GREEN);
+            entries.add(MOBILE_PHONE_RED);
             entries.add(EMPLOYEE_CHIP);
             entries.add(PROPERTY_KEY);
+            CASH.values().forEach(entries::add);
         });
+    }
+
+    public static boolean isMobilePhone(ItemStack stack) {
+        return stack != null && (stack.isOf(MOBILE_PHONE) || stack.isOf(MOBILE_PHONE_GREEN)
+                || stack.isOf(MOBILE_PHONE_RED));
     }
 }

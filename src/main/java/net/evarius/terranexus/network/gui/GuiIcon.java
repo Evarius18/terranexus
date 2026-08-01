@@ -21,7 +21,8 @@ public enum GuiIcon {
     ADD,
     SHOP,
     ADMIN,
-    PHONE;
+    PHONE,
+    CHAT;
 
     public static GuiIcon fromItem(Item item) {
         String path = Registries.ITEM.getId(item).getPath();
@@ -29,6 +30,7 @@ public enum GuiIcon {
         if (path.equals("land_survey_tool")) return LAND;
         if (path.equals("building_authority_tablet") || path.equals("management_tablet")) return ADMIN;
         if (path.equals("mobile_phone")) return PHONE;
+        if (item == Items.ECHO_SHARD) return CHAT;
         if (item == Items.ARROW || item == Items.OAK_DOOR) return BACK;
         if (item == Items.PLAYER_HEAD || item == Items.NAME_TAG) return PERSON;
         if (item == Items.GOLD_INGOT || item == Items.GOLD_NUGGET || item == Items.GOLD_BLOCK

@@ -3,6 +3,7 @@ package net.evarius.terranexus.block;
 import net.evarius.terranexus.TerraNexus;
 import net.evarius.terranexus.block.custom.ManagementComputerBlock;
 import net.evarius.terranexus.block.custom.TimeClockTerminalBlock;
+import net.evarius.terranexus.block.custom.BankAtmBlock;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
@@ -26,6 +27,9 @@ public class ModBlocks {
             AbstractBlock.Settings.create().strength(2.5f, 5f).requiresTool()
                     .sounds(BlockSoundGroup.METAL).nonOpaque(),
             TimeClockTerminalBlock::new);
+    public static final Block BANK_ATM = registerBlock("bank_atm",
+            AbstractBlock.Settings.create().strength(3.5f, 8f).requiresTool()
+                    .sounds(BlockSoundGroup.METAL).nonOpaque(), BankAtmBlock::new);
 
     private static Block registerBlock(String name, AbstractBlock.Settings settings) {
         return registerBlock(name, settings, Block::new);
@@ -49,6 +53,7 @@ public class ModBlocks {
         ItemGroupEvents.modifyEntriesEvent(ItemGroups.BUILDING_BLOCKS).register(entries -> {
             entries.add(MANAGEMENT_COMPUTER);
             entries.add(TIME_CLOCK_TERMINAL);
+            entries.add(BANK_ATM);
         });
     }
 }

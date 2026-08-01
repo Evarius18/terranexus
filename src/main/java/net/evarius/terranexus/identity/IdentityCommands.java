@@ -37,7 +37,32 @@ public final class IdentityCommands {
                         .then(literal("issue").requires(AuthorityState::mayProcessImmigration)
                                 .then(argument("player", EntityArgumentType.player())
                                         .executes(context -> issue(context.getSource(), EntityArgumentType.getPlayer(context, "player")))))
+                        .then(literal("support-delete").requires(source -> source.getEntity() instanceof ServerPlayerEntity player
+                                        && AuthorityState.mayDeleteCitizenAsSupport(player))
+                                .then(argument("citizen", StringArgumentType.word())
+                                        .then(argument("reason", StringArgumentType.greedyString())
+                                                .executes(context -> supportDelete(context.getSource(),
+                                                        StringArgumentType.getString(context, "citizen"),
+                                                        StringArgumentType.getString(context, "reason"))))))
         ));
+    }
+
+    private static int supportDelete(ServerCommandSource source, String query, String reason) {
+        ServerPlayerEntity actor;
+        try { actor = source.getPlayerOrThrow(); }
+        catch (Exception exception) { source.sendError(Text.literal("Dieser Supportvorgang muss ingame ausgeführt werden.")); return 0; }
+        String normalized = query.trim();
+        CitizenIdentity identity = IdentityState.get(source.getServer()).all().stream().filter(value ->
+                value.citizenNumber().equalsIgnoreCase(normalized) || value.playerUuid().equalsIgnoreCase(normalized)).findFirst().orElse(null);
+        if (identity == null) {
+            source.sendError(Text.literal("Keine Bürgerakte mit dieser Bürgernummer oder UUID gefunden."));
+            return 0;
+        }
+        CitizenDepartureService.Result result = CitizenDepartureService.process(actor,
+                java.util.UUID.fromString(identity.playerUuid()), CitizenDepartureService.Mode.SUPPORT_REMOVAL, reason);
+        if (!result.success()) { source.sendError(Text.literal(result.message())); return 0; }
+        source.sendFeedback(() -> Text.literal(result.message()), true);
+        return 1;
     }
 
     private static int set(ServerCommandSource source, ServerPlayerEntity player, String field, String value) {
@@ -84,7 +109,8 @@ public final class IdentityCommands {
             source.sendError(Text.literal("Die Einreise wurde noch nicht durch eine berechtigte Stelle freigegeben."));
             return 0;
         }
-        player.giveItemStack(CitizenIdCardItem.createCard(ModItems.CITIZEN_ID_CARD, identity));
+        player.giveItemStack(CitizenIdCardItem.createCard(ModItems.CITIZEN_ID_CARD, identity,
+                player.getGameProfile()));
         source.sendFeedback(() -> Text.literal("Personalausweis wurde an " + identity.firstName() + " " + identity.lastName() + " ausgegeben."), true);
         return 1;
     }

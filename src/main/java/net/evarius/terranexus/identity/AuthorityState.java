@@ -26,6 +26,10 @@ public class AuthorityState extends PersistentState {
     public static final String LAND_SURVEYOR = "land_surveyor";
     public static final String LAND_CLERK = "land_clerk";
     public static final String LAND_ADMINISTRATOR = "land_administrator";
+    public static final String LAND_HIERARCHY_ADMINISTRATOR = "land_hierarchy_administrator";
+    public static final String MODERATOR = "moderator";
+    public static final String MAYOR = "mayor";
+    public static final String CITY_COUNCIL = "city_council";
     public static final String TN_ADMIN_TEST = "tn_admin_test";
 
     private static final Codec<AuthorityState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -65,6 +69,21 @@ public class AuthorityState extends PersistentState {
         if (assigned != null && assigned.remove(role)) markDirty();
     }
 
+    public void clear(UUID player) {
+        if (roles.remove(player.toString()) != null) markDirty();
+    }
+
+    public static boolean mayProcessOfficialDeparture(ServerPlayerEntity player) {
+        if (isAdministrator(player)) return true;
+        AuthorityState state = get(player.getServer());
+        UUID id = player.getUuid();
+        return state.has(id, CIVIL_REGISTRAR) || state.has(id, IMMIGRATION_OFFICER) || state.has(id, WHITELISTER);
+    }
+
+    public static boolean mayDeleteCitizenAsSupport(ServerPlayerEntity player) {
+        return isAdministrator(player) || hasActiveTeamRole(player, SUPPORTER, TeamModeType.SUPPORT);
+    }
+
     public static boolean mayProcessImmigration(ServerCommandSource source) {
         if (!(source.getEntity() instanceof ServerPlayerEntity player)) return false;
         return mayManageIdentity(player);
@@ -75,7 +94,7 @@ public class AuthorityState extends PersistentState {
         AuthorityState state = get(player.getServer());
         return state.has(player.getUuid(), CIVIL_REGISTRAR)
                 || state.has(player.getUuid(), IMMIGRATION_OFFICER)
-                || state.has(player.getUuid(), SUPPORTER)
+                || hasActiveTeamRole(player, SUPPORTER, TeamModeType.SUPPORT)
                 || state.has(player.getUuid(), WHITELISTER);
     }
 
@@ -106,6 +125,9 @@ public class AuthorityState extends PersistentState {
         if (isAdministrator(player)) return true;
         AuthorityState state=get(player.getServer());UUID id=player.getUuid();return state.has(id,LAND_REGISTRAR)||state.has(id,LAND_ADMINISTRATOR);
     }
+    public static boolean mayManageLandHierarchy(ServerPlayerEntity player) {
+        return isAdministrator(player) || get(player.getServer()).has(player.getUuid(), LAND_HIERARCHY_ADMINISTRATOR);
+    }
 
     public static boolean isTnAdmin(ServerPlayerEntity player) {
         return get(player.getServer()).has(player.getUuid(), TN_ADMIN_TEST);
@@ -117,7 +139,15 @@ public class AuthorityState extends PersistentState {
     }
 
     public static boolean isBuilder(ServerPlayerEntity player) {
-        return get(player.getServer()).has(player.getUuid(), BUILDER) || isAdministrator(player);
+        return hasActiveTeamRole(player, BUILDER, TeamModeType.BUILDER) || isAdministrator(player);
+    }
+
+    public static boolean isModerator(ServerPlayerEntity player) {
+        return hasActiveTeamRole(player, MODERATOR, TeamModeType.MODERATION) || isAdministrator(player);
+    }
+
+    private static boolean hasActiveTeamRole(ServerPlayerEntity player,String role,TeamModeType mode){
+        return get(player.getServer()).has(player.getUuid(),role)&&TeamModeState.get(player.getServer()).isActive(player.getUuid(),mode);
     }
 
     public static boolean isKnownRole(String role) {
@@ -125,8 +155,9 @@ public class AuthorityState extends PersistentState {
     }
 
     public static List<String> knownRoles() {
-        return List.of(ADMIN, SUPPORTER, WHITELISTER, BUILDER, CIVIL_REGISTRAR, IMMIGRATION_OFFICER,
-                LAND_SURVEYOR, LAND_CLERK, LAND_ADMINISTRATOR, LAND_REGISTRAR, TN_ADMIN_TEST);
+        return List.of(ADMIN, SUPPORTER, WHITELISTER, BUILDER, MODERATOR, CIVIL_REGISTRAR, IMMIGRATION_OFFICER,
+                LAND_SURVEYOR, LAND_CLERK, LAND_ADMINISTRATOR, LAND_HIERARCHY_ADMINISTRATOR, LAND_REGISTRAR,
+                MAYOR, CITY_COUNCIL, TN_ADMIN_TEST);
     }
 
     public static String roleLabel(String role) {
@@ -141,6 +172,10 @@ public class AuthorityState extends PersistentState {
             case LAND_SURVEYOR -> "Vermessungspersonal des Bauamts";
             case LAND_CLERK -> "Sachbearbeitung des Bauamts";
             case LAND_ADMINISTRATOR -> "Bauamtsleitung";
+            case LAND_HIERARCHY_ADMINISTRATOR -> "Leitung der Verwaltungshierarchie";
+            case MODERATOR -> "Moderator/in";
+            case MAYOR -> "Bürgermeister/in";
+            case CITY_COUNCIL -> "Stadtratsmitglied";
             case TN_ADMIN_TEST -> "TNAdmin (nur Entwicklung/Test)";
             default -> role;
         };

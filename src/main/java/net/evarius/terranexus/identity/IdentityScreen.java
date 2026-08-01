@@ -17,6 +17,11 @@ public final class IdentityScreen {
     private IdentityScreen() {}
 
     public static void open(ServerPlayerEntity player, CitizenIdentity identity) {
+        open(player, identity, null);
+    }
+
+    public static void open(ServerPlayerEntity player, CitizenIdentity identity,
+                            CitizenPortraitSnapshot portrait) {
         ReadOnlyIdentityInventory inventory = new ReadOnlyIdentityInventory();
         inventory.display(4, "Bürgernummer", identity.citizenNumber(), Items.NAME_TAG);
         inventory.display(10, "Vorname", identity.firstName(), Items.PAPER);
@@ -30,6 +35,7 @@ public final class IdentityScreen {
         boolean approved = IdentityState.get(player.getServer()).isApproved(citizenUuid);
         inventory.display(0, "Einreisestatus", approved ? "Freigegeben" : "In behördlicher Prüfung",
                 approved ? Items.LIME_DYE : Items.YELLOW_DYE);
+        if (portrait != null) inventory.display(25, "Ausstellungsfoto", portrait.wireValue(), Items.PLAYER_HEAD);
 
         CustomGuiService.open(player, inventory, Map.of(),
                 Text.literal("TerraNexus Bürgerinformation").formatted(Formatting.DARK_AQUA));

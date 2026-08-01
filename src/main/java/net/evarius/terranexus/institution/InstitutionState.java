@@ -93,6 +93,26 @@ public class InstitutionState extends PersistentState {
         return institutions.values().stream().anyMatch(institution -> institution.employees().containsKey(id));
     }
 
+    public boolean ownsInstitution(UUID player) {
+        String id = player.toString();
+        return institutions.values().stream().anyMatch(institution -> institution.ownerUuid().equals(id));
+    }
+
+    public synchronized int removeEmployment(MinecraftServer server, UUID player) {
+        String playerId = player.toString();
+        int changed = 0;
+        for (Institution institution : new ArrayList<>(institutions.values())) {
+            if (institution.ownerUuid().equals(playerId) || !institution.employees().containsKey(playerId)) continue;
+            Map<String, InstitutionEmployee> employees = new HashMap<>(institution.employees());
+            employees.remove(playerId);
+            institutions.put(institution.id(), build(institution, institution.ownerUuid(), employees));
+            TimeClockState.get(server).employmentEnded(server, institution.id(), player, System.currentTimeMillis());
+            changed++;
+        }
+        if (changed > 0) { invalidateCaches(); markDirty(); }
+        return changed;
+    }
+
     public synchronized boolean setOrganizationType(ServerPlayerEntity actor, String institutionId, String organizationType) {
         Institution institution = institutions.get(institutionId);
         String normalized = organizationType == null ? "" : organizationType.trim().toUpperCase(java.util.Locale.ROOT);

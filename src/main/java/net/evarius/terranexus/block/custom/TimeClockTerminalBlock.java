@@ -25,8 +25,10 @@ import net.minecraft.world.World;
 
 public final class TimeClockTerminalBlock extends HorizontalFacingBlock {
     public static final MapCodec<TimeClockTerminalBlock> CODEC = createCodec(TimeClockTerminalBlock::new);
-    private static final VoxelShape NORTH_SOUTH = Block.createCuboidShape(1, 0, 3, 15, 16, 13);
-    private static final VoxelShape EAST_WEST = Block.createCuboidShape(3, 0, 1, 13, 16, 15);
+    private static final VoxelShape NORTH = Block.createCuboidShape(1, 1, 0, 15, 14, 5.6);
+    private static final VoxelShape SOUTH = Block.createCuboidShape(1, 1, 10.4, 15, 14, 16);
+    private static final VoxelShape EAST = Block.createCuboidShape(10.4, 1, 1, 16, 14, 15);
+    private static final VoxelShape WEST = Block.createCuboidShape(0, 1, 1, 5.6, 14, 15);
 
     public TimeClockTerminalBlock(Settings settings) {
         super(settings);
@@ -40,7 +42,13 @@ public final class TimeClockTerminalBlock extends HorizontalFacingBlock {
     }
     @Override protected VoxelShape getOutlineShape(BlockState state, BlockView world,
                                                     BlockPos pos, ShapeContext context) {
-        return state.get(FACING).getAxis() == Direction.Axis.X ? EAST_WEST : NORTH_SOUTH;
+        return switch (state.get(FACING)) {
+            case NORTH -> NORTH;
+            case SOUTH -> SOUTH;
+            case EAST -> EAST;
+            case WEST -> WEST;
+            default -> NORTH;
+        };
     }
 
     @Override

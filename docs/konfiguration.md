@@ -177,3 +177,19 @@ und Polizei existiert derzeit kein fachliches Modul; eine Config ohne Verbrauche
 Berechtigungsmatrix bleibt bewusst Bestandteil des Codes, damit eine fehlerhafte Datei keine
 Sicherheitsprüfung abschalten kann. Sobald entsprechende RP-Module hinzukommen, können sie als weitere
 fachliche Config-Dateien in denselben Manager aufgenommen werden.
+
+### Messenger und Ausreiseaudit
+
+`phone.json` enthält `messengerRetentionHours`, Nachrichten-/Gruppen-/Unterhaltungslimits und das
+Bereinigungsintervall. Neue Werte werden beim Laden ergänzt, ohne bestehende Einstellungen zu überschreiben.
+`immigration.json` enthält `maximumDepartureAuditEntries`; die Berechtigungsregeln selbst bleiben absichtlich
+nicht konfigurierbar.
+
+`claims.json` enthält außerdem `subareaTypes`, `maximumSubareasPerProperty` und `maximumSubareaColumns`.
+Damit lassen sich interne Flächentypen und sichere Prüfgrenzen ohne Codeänderung anpassen.
+
+### `elections.json`
+
+Enthält Standardlaufzeit, Wahl- und Optionslimits sowie die Aufbewahrungsdauer abgeschlossener Abstimmungen.
+Wahlberechtigung und die Prüfung auf eine freigeschaltete Bürgerakte bleiben nicht deaktivierbare
+Sicherheitslogik.

@@ -15,7 +15,6 @@ import net.evarius.terranexus.landlord.AdministrativeArea;
 import net.evarius.terranexus.landlord.LandManagementState;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Items;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -262,7 +261,7 @@ public final class EconomyScreen {
                 + EconomyState.format(economy.balance(account)) + (data.frozen() ? " · GESPERRT" : "");
     }
     private static void input(ServerPlayerEntity player, String title, Consumer<String> done) {
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, inventory, ignored) -> new TextInputScreenHandler(id, inventory, done), Text.literal(title).formatted(Formatting.GOLD)));
+        TextPromptService.open(player, title, done);
     }
     private static void button(SimpleInventory inventory, Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions,
                                int slot, net.minecraft.item.Item item, String name, String detail, Consumer<net.minecraft.entity.player.PlayerEntity> action) {

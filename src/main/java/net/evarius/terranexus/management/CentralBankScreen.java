@@ -11,7 +11,6 @@ import net.evarius.terranexus.logging.AuditLogger;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -211,8 +210,7 @@ public final class CentralBankScreen {
         player.sendMessage(Text.literal(text).formatted(success ? Formatting.GREEN : Formatting.RED), false);
     }
     private static void input(ServerPlayerEntity player, String title, Consumer<String> done) {
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, inventory, ignored) ->
-                new TextInputScreenHandler(id, inventory, done), Text.literal(title).formatted(Formatting.GOLD)));
+        TextPromptService.open(player, title, done);
     }
     private static void display(SimpleInventory inventory, int slot, Item item, String name, String detail) {
         ManagementHubScreen.display(inventory, slot, item, name, detail);

@@ -114,6 +114,34 @@ public class EconomyState extends PersistentState {
         return true;
     }
 
+    public synchronized long closePlayerAccountOnDeparture(UUID citizen, UUID actor) {
+        String account = playerAccount(citizen);
+        long amount = balance(account);
+        if (amount > 0) {
+            String destination = "system:departures";
+            ensureAccount(destination);
+            long target = balance(destination);
+            long updated;
+            try { updated = Math.addExact(target, amount); }
+            catch (ArithmeticException overflow) { return -1L; }
+            balances.put(account, 0L);
+            balances.put(destination, updated);
+            record(account, destination, amount, "Kontoschließung nach Ausreise", actor.toString(), "",
+                    "CITIZEN_DEPARTURE", true, 0L, updated);
+        }
+        closeEmptyAccount(account);
+        metricsCache = null;
+        markDirty();
+        return amount;
+    }
+
+    public synchronized boolean canClosePlayerAccountOnDeparture(UUID citizen) {
+        long amount = balance(playerAccount(citizen));
+        if (amount <= 0) return true;
+        try { Math.addExact(balance("system:departures"), amount); return true; }
+        catch (ArithmeticException overflow) { return false; }
+    }
+
     public void deposit(UUID owner, long cents) { deposit(playerAccount(owner), cents); }
     public void deposit(String account, long cents) {
         if (!adjust(account, cents, "Administrative Einzahlung", "", institutionFrom(account), "DEPOSIT"))

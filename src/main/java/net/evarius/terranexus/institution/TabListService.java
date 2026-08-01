@@ -1,7 +1,6 @@
 package net.evarius.terranexus.institution;
 
 import net.evarius.terranexus.config.ConfigManager;
-import net.evarius.terranexus.identity.RoleplayNames;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.network.packet.s2c.play.PlayerListHeaderS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket;
@@ -11,11 +10,12 @@ import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Locale;
 
 public final class TabListService {
+    private static final List<String> DISPLAY_ORDER = List.of("FW", "RD", "POL", "BAU");
     private static String lastDutyOverview = "";
 
     private TabListService() {}
@@ -52,13 +52,14 @@ public final class TabListService {
     private static PlayerListHeaderS2CPacket dutyPacket(MinecraftServer server) {
         if (!ConfigManager.timeClock().showDutyOverviewInPlayerList)
             return new PlayerListHeaderS2CPacket(Text.empty(), Text.empty());
-        MutableText header = Text.literal("Im Dienst").formatted(Formatting.GOLD, Formatting.BOLD);
-        for (String type : ConfigManager.timeClock().playerListOrganizationTypes) {
-            String normalized = type.toUpperCase(Locale.ROOT);
-            String label = ConfigManager.institutions().organizationTypes.getOrDefault(normalized, normalized);
-            int count = TimeClockService.onlineOnDutyForOrganization(server, normalized);
-            header.append(Text.literal("\n" + icon(normalized) + " " + label + ": ")
-                    .formatted(color(normalized)))
+        MutableText header = Text.empty();
+        List<String> types = visibleOrganizationTypes();
+        for (int index = 0; index < types.size(); index++) {
+            String type = types.get(index);
+            int count = TimeClockService.onlineOnDutyForOrganization(server, type);
+            if (index > 0) header.append(Text.literal(index % 2 == 0 ? "\n" : "    |    ")
+                    .formatted(Formatting.DARK_GRAY));
+            header.append(Text.literal(shortLabel(type) + ": ").formatted(color(type)))
                     .append(Text.literal(String.valueOf(count)).formatted(Formatting.WHITE));
         }
         return new PlayerListHeaderS2CPacket(header, Text.empty());
@@ -67,20 +68,21 @@ public final class TabListService {
     private static String dutyOverviewKey(MinecraftServer server) {
         if (!ConfigManager.timeClock().showDutyOverviewInPlayerList) return "disabled";
         StringBuilder key = new StringBuilder();
-        for (String type : ConfigManager.timeClock().playerListOrganizationTypes)
+        for (String type : visibleOrganizationTypes())
             key.append(type).append('=').append(TimeClockService.onlineOnDutyForOrganization(server, type)).append(';');
         return key.toString();
     }
 
-    private static String icon(String type) {
-        return switch (type) {
-            case "FW" -> "🚒";
-            case "POL" -> "🚓";
-            case "RD" -> "🚑";
-            case "BAU" -> "🛠";
-            case "JUSTIZ" -> "⚖";
-            default -> "•";
-        };
+    private static List<String> visibleOrganizationTypes() {
+        List<String> configured = ConfigManager.timeClock().playerListOrganizationTypes;
+        List<String> result = new ArrayList<>(DISPLAY_ORDER.size());
+        for (String type : DISPLAY_ORDER)
+            if (configured.stream().anyMatch(value -> value.equalsIgnoreCase(type))) result.add(type);
+        return result;
+    }
+
+    private static String shortLabel(String type) {
+        return type.equals("BAU") ? "Bauamt" : type;
     }
 
     private static Formatting color(String type) {
@@ -89,7 +91,6 @@ public final class TabListService {
             case "POL" -> Formatting.BLUE;
             case "RD" -> Formatting.AQUA;
             case "BAU" -> Formatting.YELLOW;
-            case "JUSTIZ" -> Formatting.DARK_PURPLE;
             default -> Formatting.GRAY;
         };
     }

@@ -129,7 +129,8 @@ public final class ImmigrationScreen {
         CitizenIdentity current = state.get(citizenId);
         ServerPlayerEntity target = officer.getServer().getPlayerManager().getPlayer(citizenId);
         if (current != null && state.isApproved(citizenId) && target != null) {
-            target.giveItemStack(CitizenIdCardItem.createCard(ModItems.CITIZEN_ID_CARD, current));
+            target.giveItemStack(CitizenIdCardItem.createCard(ModItems.CITIZEN_ID_CARD, current,
+                    target.getGameProfile()));
         }
         open(officer, page);
     }

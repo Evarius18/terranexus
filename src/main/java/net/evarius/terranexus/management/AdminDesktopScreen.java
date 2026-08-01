@@ -24,7 +24,8 @@ public final class AdminDesktopScreen {
         boolean bank = InstitutionAccess.hasBankPermission(player, InstitutionPermission.BANK_VIEW_ACCOUNTS);
         boolean centralBank = InstitutionAccess.hasCentralBankPermission(player, InstitutionPermission.CENTRAL_BANK_VIEW);
         boolean areaFinance = AreaFinanceScreen.hasManagedArea(player);
-        if (!identity && !institution && !bank && !centralBank && !areaFinance) {
+        boolean landOffice = AuthorityState.mayUseLandOffice(player);
+        if (!identity && !institution && !bank && !centralBank && !areaFinance && !landOffice) {
             player.sendMessage(Text.translatable("message.terranexus.admin_desktop.denied").formatted(Formatting.RED), false);
             return;
         }
@@ -53,6 +54,12 @@ public final class AdminDesktopScreen {
                     Text.translatable("gui.terranexus.admin.institutions"),
                     Text.translatable("gui.terranexus.admin_desktop.institutions.description"));
             actions.put(23, ignored -> InstitutionScreen.open(player));
+        }
+        if (landOffice) {
+            ManagementHubScreen.display(inventory, 25, Items.FILLED_MAP,
+                    Text.translatable("gui.terranexus.admin.properties"),
+                    Text.translatable("gui.terranexus.admin_desktop.properties.description"));
+            actions.put(25, ignored -> LandOfficeOverviewScreen.open(player));
         }
         if (centralBank) {
             ManagementHubScreen.display(inventory, 33, Items.BEACON,

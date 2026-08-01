@@ -4,6 +4,8 @@ import net.evarius.terranexus.management.CustomGuiService;
 import net.evarius.terranexus.management.ManagementHubScreen;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Items;
+import net.evarius.terranexus.phone.messenger.MessengerApplication;
+import net.evarius.terranexus.election.ElectionApplication;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -18,9 +20,8 @@ public final class PhoneScreen {
         PhoneAppRegistry.register(new BankPhoneApplication());
         PhoneAppRegistry.register(new RealEstatePhoneApplication());
         PhoneAppRegistry.register(new VoicePhoneApplication());
-        PhoneAppRegistry.register(new PlaceholderPhoneApplication("terranexus:messages",
-                Text.translatable("gui.terranexus.phone.messages"),
-                Text.translatable("gui.terranexus.phone.not_connected"), Items.PAPER));
+        PhoneAppRegistry.register(new MessengerApplication());
+        PhoneAppRegistry.register(new ElectionApplication());
         PhoneAppRegistry.register(new PlaceholderPhoneApplication("terranexus:companies",
                 Text.translatable("gui.terranexus.phone.companies"),
                 Text.translatable("gui.terranexus.phone.companies.description"), Items.BRICKS));

@@ -23,7 +23,6 @@ import net.evarius.terranexus.item.ModItems;
 import net.evarius.terranexus.item.custom.EmployeeChipItem;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Items;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -471,7 +470,7 @@ public final class InstitutionManagementScreen {
         };
     }
     private static void input(ServerPlayerEntity player, String title, Consumer<String> done) {
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, inventory, ignored) -> new TextInputScreenHandler(id, inventory, done), Text.literal(title).formatted(Formatting.DARK_AQUA)));
+        TextPromptService.open(player, title, done);
     }
     private static void navigation(SimpleInventory inventory, Map<Integer, Consumer<net.minecraft.entity.player.PlayerEntity>> actions,
                                    ServerPlayerEntity player, int page, int pages, Runnable previous, Runnable next) {

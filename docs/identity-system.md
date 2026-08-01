@@ -63,6 +63,21 @@ Authorized staff receive the immigration workstation; citizens receive their per
 owner, container, banking, identity or land-registry rights. `tn_admin_test` remains a separately marked
 development role used by `/tnadmin test-access`.
 
+## Ausreise und Support-Löschung
+
+Die Bürgerakte bietet für `civil_registrar`, `immigration_officer` und `whitelister` die amtliche Ausreise
+mit Begründung und Bestätigungsdialog. Die Support-Löschung erscheint in keiner normalen Oberfläche und ist
+nur über `/identity support-delete <Bürgernummer|UUID> <Begründung>` für `supporter` oder Administratoren
+erreichbar. Institutions-Eigentum, aktive Mietverträge oder eigene Verwaltungsebenen müssen vorher geordnet
+übertragen beziehungsweise beendet werden.
+
+Beim Abschluss werden Freigabe und Identität, Rollen, Beschäftigungen, Zugriffsfreigaben, offene
+Grundstücksübertragungen, persönliche Shops und Messenger-Verknüpfungen bereinigt. Eigene Grundstücke gehen
+an `terranexus:wilderness`; ihr Eigentümerwechsel wird im Grundstücksaudit protokolliert. Ein Restguthaben
+wird nachvollziehbar auf `system:departures` ausgebucht, bevor das leere Konto geschlossen wird. Der separate
+PersistentState `terranexus_citizen_departure_audit` speichert Bearbeiter, Zeitpunkt, Bürgernummer, Modus,
+Begründung und die Zahl bereinigter Verknüpfungen.
+
 ## Currency configuration
 
 The structured files below `config/TerraNexus/` are created on first server start. Currency and immigration

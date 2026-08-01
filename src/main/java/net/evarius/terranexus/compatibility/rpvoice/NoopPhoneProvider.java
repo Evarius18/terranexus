@@ -2,8 +2,11 @@ package net.evarius.terranexus.compatibility.rpvoice;
 
 import net.evarius.terranexus.phone.model.PhoneAction;
 import net.evarius.terranexus.phone.model.PhoneActionResult;
+import net.evarius.terranexus.phone.model.PhoneDirectoryContact;
 import net.evarius.terranexus.phone.model.PhoneSnapshot;
 import net.minecraft.server.network.ServerPlayerEntity;
+
+import java.util.List;
 
 public final class NoopPhoneProvider implements PhoneFeatureProvider {
     @Override public boolean installed() { return false; }
@@ -13,4 +16,5 @@ public final class NoopPhoneProvider implements PhoneFeatureProvider {
                                                String value, String secondaryValue) {
         return PhoneActionResult.rejected("Telefonintegration nicht verfügbar.");
     }
+    @Override public List<PhoneDirectoryContact> messengerContacts(ServerPlayerEntity player) { return List.of(); }
 }

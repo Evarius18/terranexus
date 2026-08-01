@@ -51,3 +51,17 @@ Scoreboard-Teams als Umgehung.
 `config/TerraNexus/phone.json` begrenzt Synchronisierungsintervall, übertragene History-Einträge
 und Eingabelänge. Die fachlichen Telefon- und Kontaktlimits bleiben Eigentum der RP-VCA-
 Konfiguration.
+
+## TerraNexus-Messenger
+
+Die Nachrichten-App ist ein eigenständiges TerraNexus-RP-Modul und verändert die optionale RP-VCA-
+Telefonintegration nicht. Einzel- und Gruppenchats, Mitgliedschaften, Lesestände und Nachrichten liegen
+serverautoritativ im Welt-PersistentState `terranexus_messenger`. Dadurch stehen Offline-Nachrichten nach dem
+nächsten Login und Verläufe nach einem Neustart wieder bereit. Beim Login wird ausschließlich die Zahl
+ungelesener Nachrichten gemeldet; beim Öffnen wird der Lesestand serverseitig aktualisiert.
+
+Nachrichten tragen einen festen Ablaufzeitpunkt. Ein periodischer Serverdienst entfernt abgelaufene Inhalte
+physisch aus dem PersistentState; zusätzlich wird vor jedem Lesen bereinigt. Die Oberfläche zeigt für jede
+Nachricht die verbleibende Zeit. Gruppen können vom Ersteller angelegt und hinsichtlich ihrer Mitglieder
+verwaltet werden. Beim Ausscheiden eines Bürgers werden Direktchats und seine Nachrichten entfernt; eine
+verbleibende Gruppe erhält einen neuen Eigentümer.

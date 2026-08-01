@@ -2,9 +2,9 @@
 	"format_version": "1.21.11",
 	"credit": "Made with Blockbench",
 	"textures": {
-		"1": "rgb_tablet",
-		"2": "tasten",
-		"particle": "tasten"
+		"1": "terranexus:item/mobile_phone/rgb_tablet",
+		"2": "terranexus:item/mobile_phone/tasten",
+		"particle": "terranexus:item/mobile_phone/tasten"
 	},
 	"elements": [
 		{
@@ -272,7 +272,7 @@
 		{
 			"from": [7.05, -0.05, 10],
 			"to": [7.3, 0.05, 12],
-			"rotation": {"x": 0, "y": 157.5, "z": 0, "origin": [7.05, 0, 10]},
+			"rotation": {"angle": -22.5, "axis": "y", "origin": [7.05, 0, 10]},
 			"faces": {
 				"north": {"uv": [0, 1, 1, 2], "texture": "#1"},
 				"east": {"uv": [0, 1, 1, 2], "texture": "#1"},

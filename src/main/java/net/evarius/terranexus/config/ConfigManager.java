@@ -39,6 +39,7 @@ public final class ConfigManager {
     private static PerformanceConfig performance = new PerformanceConfig();
     private static LoggingConfig logging = new LoggingConfig();
     private static PhoneConfig phone = new PhoneConfig();
+    private static ElectionConfig elections = new ElectionConfig();
 
     private ConfigManager() {}
 
@@ -72,6 +73,7 @@ public final class ConfigManager {
                 performance = read("performance.json", new PerformanceConfig(), PerformanceConfig.class, PerformanceConfig::validate);
                 logging = read("logging.json", new LoggingConfig(), LoggingConfig.class, LoggingConfig::validate);
                 phone = read("phone.json", new PhoneConfig(), PhoneConfig.class, PhoneConfig::validate);
+                elections = read("elections.json", new ElectionConfig(), ElectionConfig.class, ElectionConfig::validate);
                 if (logging.logConfigLoading) TerraNexus.LOGGER.info("TerraNexus-Konfiguration aus {} geladen", directory);
             } catch (IOException | RuntimeException exception) {
                 TerraNexus.LOGGER.error("TerraNexus-Konfiguration konnte nicht vollständig geladen werden; sichere Standardwerte bleiben aktiv", exception);
@@ -95,6 +97,7 @@ public final class ConfigManager {
     public static PerformanceConfig performance() { return performance; }
     public static LoggingConfig logging() { return logging; }
     public static PhoneConfig phone() { return phone; }
+    public static ElectionConfig elections() { return elections; }
 
     private static <T> T read(String fileName, T defaults, Class<T> type, Consumer<T> validator) throws IOException {
         Path path = directory.resolve(fileName);

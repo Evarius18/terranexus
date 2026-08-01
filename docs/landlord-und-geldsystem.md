@@ -132,10 +132,21 @@ Konten, Verträge, Shops und Beschäftigungen liegen in Minecraft-`PersistentSta
 
 ## Verwaltung, Suche und Protokollierung
 
-Die Hierarchie ist nicht fest im Code verdrahtet. Standardmäßig reicht sie von `Ort / Stadt` über Gemeinde,
-Landkreis, Region und Bundesland bis Staat. Namen und Anzahl der Stufen kommen aus `administration.json`.
+Die Hierarchie ist nicht fest im Code verdrahtet. Standardmäßig reicht sie von `Gemeinde` über Stadt,
+Landkreis und Bundesland bis Land. Namen und Anzahl der Stufen kommen aus `administration.json`.
 Es können beliebig viele Orte, Gemeinden und weitere Einheiten je Stufe angelegt werden; neue Einheiten müssen
 einer fachlich passenden übergeordneten Einheit zugewiesen werden.
+
+Einheiten können vollständig ingame erstellt, umbenannt, einer verantwortlichen Person oder Institution
+zugeordnet und gelöscht werden. Beim Löschen werden Grundstücke und Zuständigkeiten auf die übergeordnete
+Ebene übertragen. Untereinheiten, Beschäftigte, Kontosaldo und aktive Finanzverknüpfungen verhindern eine
+unsichere Löschung. Jede Verwaltungsänderung landet im persistenten Verwaltungsaudit.
+
+Bestehende Grundstücke können mit dem Landvermessungsgerät vollständig neu vermessen werden, ohne ID, Namen,
+Eigentümer oder Verträge zu verlieren. Eine innenliegende Teilfläche kann aus der Hauptfläche ausgespart und
+als neues Grundstück angelegt werden; der anschließende Eigentümerwechsel verwendet die normalen zentralen
+Zustimmungsregeln. Interne Unterbereiche wie Wohnungen, Keller oder Garagen werden separat klassifiziert,
+bleiben aber rechtlich und technisch Bestandteil des Hauptgrundstücks.
 
 Über allen konfigurierten Stufen liegt immer die virtuelle, unveränderliche `Wilderness`. Nicht explizit
 eingetragene Blöcke gehören dadurch ohne gigantische Welt-Datensätze eindeutig dieser Wurzel. Bestehende und

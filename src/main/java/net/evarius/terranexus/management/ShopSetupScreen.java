@@ -9,7 +9,6 @@ import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.registry.Registries;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
@@ -177,10 +176,7 @@ public final class ShopSetupScreen {
 
     private static void input(ServerPlayerEntity player, String title, String initialValue,
                               Consumer<String> done) {
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
-                (syncId, inventory, ignored) -> new TextInputScreenHandler(
-                        syncId, inventory, initialValue, done),
-                Text.literal(title).formatted(Formatting.DARK_GREEN)));
+        TextPromptService.open(player, title, initialValue, done, () -> {});
     }
 
     private static void error(ServerPlayerEntity player, String message) {

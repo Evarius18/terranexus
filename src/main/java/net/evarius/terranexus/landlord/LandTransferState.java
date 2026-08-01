@@ -46,6 +46,13 @@ public final class LandTransferState extends PersistentState {
         if (requests.values().removeIf(request -> request.propertyId().equals(propertyId))) markDirty();
     }
 
+    public void removeForCitizen(String citizenId) {
+        boolean changed = requests.values().removeIf(request -> request.oldOwnerId().equals(citizenId)
+                || request.newOwnerId().equals(citizenId) || request.initiatorId().equals(citizenId));
+        changed |= pendingExtracts.remove(citizenId) != null;
+        if (changed) markDirty();
+    }
+
     public void purgeExpired(long oldestAllowed) {
         if (requests.values().removeIf(request -> request.createdAt() < oldestAllowed)) markDirty();
     }

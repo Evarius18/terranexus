@@ -4,13 +4,13 @@ import net.evarius.terranexus.identity.AuthorityState;
 import net.evarius.terranexus.identity.CitizenIdentity;
 import net.evarius.terranexus.identity.IdentityState;
 import net.evarius.terranexus.identity.RoleplayNames;
+import net.evarius.terranexus.identity.CitizenDepartureService;
 import net.evarius.terranexus.config.ConfigManager;
 import net.evarius.terranexus.item.ModItems;
 import net.evarius.terranexus.item.custom.CitizenIdCardItem;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -73,19 +73,60 @@ public final class CitizenRecordScreen {
                 if (!AuthorityState.mayManageIdentity(officer) || !state.isApproved(citizenId)) return;
                 CitizenIdentity current = state.get(citizenId);
                 if (current == null) return;
-                if (!officer.giveItemStack(CitizenIdCardItem.createCard(ModItems.CITIZEN_ID_CARD, current)))
-                    officer.dropItem(CitizenIdCardItem.createCard(ModItems.CITIZEN_ID_CARD, current), false);
+                ServerPlayerEntity subject = officer.getServer().getPlayerManager().getPlayer(citizenId);
+                if (subject == null) {
+                    officer.sendMessage(Text.literal("Für das aktuelle Ausstellungsfoto muss die Zielperson online sein.")
+                            .formatted(Formatting.RED), false);
+                    open(officer, citizenId, returnPage);
+                    return;
+                }
+                var card = CitizenIdCardItem.createCard(ModItems.CITIZEN_ID_CARD, current,
+                        subject.getGameProfile());
+                if (!officer.giveItemStack(card)) officer.dropItem(card, false);
                 officer.sendMessage(Text.literal("Der Personalausweis für " + current.firstName() + " "
                         + current.lastName() + " wurde dir zur persönlichen Aushändigung übergeben.")
                         .formatted(Formatting.GREEN), false);
                 open(officer, citizenId, returnPage);
             });
         }
+        if (AuthorityState.mayProcessOfficialDeparture(officer)) {
+            ManagementHubScreen.display(inventory, 45, Items.OAK_BOAT, "Amtliche Ausreise",
+                    "Bürgerakte kontrolliert schließen · Grund und Bestätigung erforderlich");
+            actions.put(45, ignored -> departureReason(officer, citizenId, returnPage));
+        }
         ManagementHubScreen.display(inventory, 53, Items.ARROW, "Zurück", "Zur Einreiseübersicht");
         actions.put(53, ignored -> ImmigrationScreen.open(officer, returnPage));
 
         CustomGuiService.open(officer, inventory, actions,
                 Text.literal("Bürgerakte bearbeiten").formatted(Formatting.DARK_AQUA));
+    }
+
+    private static void departureReason(ServerPlayerEntity officer, UUID citizenId, int returnPage) {
+        TextPromptService.open(officer, "Ausreisegrund", "", reason ->
+                        confirmDeparture(officer, citizenId, returnPage,
+                                CitizenDepartureService.Mode.OFFICIAL_DEPARTURE, reason),
+                () -> open(officer, citizenId, returnPage));
+    }
+
+    private static void confirmDeparture(ServerPlayerEntity officer, UUID citizenId, int returnPage,
+                                         CitizenDepartureService.Mode mode, String reason) {
+        CitizenIdentity identity = IdentityState.get(officer.getServer()).get(citizenId);
+        if (identity == null) { ImmigrationScreen.open(officer, returnPage); return; }
+        SimpleInventory inventory = new SimpleInventory(54);
+        Map<Integer, java.util.function.Consumer<net.minecraft.entity.player.PlayerEntity>> actions = new HashMap<>();
+        ManagementHubScreen.display(inventory, 4, Items.WRITTEN_BOOK, "Vorgang verbindlich bestätigen",
+                identity.firstName() + " " + identity.lastName() + " · " + identity.citizenNumber());
+        ManagementHubScreen.display(inventory, 22, Items.PAPER, "Begründung", reason);
+        ManagementHubScreen.display(inventory, 30, Items.LIME_DYE, "Ausreise abschließen",
+                "Akte, Rollen und Verknüpfungen werden bereinigt");
+        actions.put(30, ignored -> {
+            CitizenDepartureService.Result result = CitizenDepartureService.process(officer, citizenId, mode, reason);
+            officer.sendMessage(Text.literal(result.message()).formatted(result.success() ? Formatting.GREEN : Formatting.RED), false);
+            if (result.success()) ImmigrationScreen.open(officer, returnPage); else open(officer, citizenId, returnPage);
+        });
+        ManagementHubScreen.display(inventory, 32, Items.RED_DYE, "Abbrechen", "Keine Änderungen durchführen");
+        actions.put(32, ignored -> open(officer, citizenId, returnPage));
+        CustomGuiService.open(officer, inventory, actions, Text.literal("Bürgerausreise bestätigen").formatted(Formatting.RED));
     }
 
     private static void addField(SimpleInventory inventory,
@@ -98,8 +139,9 @@ public final class CitizenRecordScreen {
 
     private static void openEditor(ServerPlayerEntity officer, UUID citizenId, String field, String label, int returnPage) {
         if (!AuthorityState.mayManageIdentity(officer)) return;
-        officer.openHandledScreen(new SimpleNamedScreenHandlerFactory(
-                (syncId, inventory, ignored) -> new TextInputScreenHandler(syncId, inventory, value -> {
+        CitizenIdentity current = IdentityState.get(officer.getServer()).get(citizenId);
+        String initial = current == null ? "" : fieldValue(current, field);
+        TextPromptService.open(officer, label + " ändern", initial == null ? "" : initial, value -> {
                     if (!AuthorityState.mayManageIdentity(officer)) return;
                     String error = validate(field, value);
                     if (error != null) {
@@ -118,7 +160,7 @@ public final class CitizenRecordScreen {
                         }
                     }
                     open(officer, citizenId, returnPage);
-                }), Text.literal(label + " ändern").formatted(Formatting.DARK_AQUA)));
+                }, () -> open(officer, citizenId, returnPage));
     }
 
     private static String validate(String field, String value) {
@@ -136,6 +178,20 @@ public final class CitizenRecordScreen {
             }
         }
         return null;
+    }
+
+    private static String fieldValue(CitizenIdentity identity, String field) {
+        return switch (field.toLowerCase(java.util.Locale.ROOT)) {
+            case "vorname", "firstname" -> identity.firstName();
+            case "nachname", "lastname" -> identity.lastName();
+            case "geburtsdatum", "birthdate" -> identity.birthDate();
+            case "geburtsort", "birthplace" -> identity.birthPlace();
+            case "geburtsland", "birthcountry" -> identity.birthCountry();
+            case "nationalitaet", "nationality" -> identity.nationality();
+            case "geschlecht", "gender" -> identity.gender();
+            case "adresse", "address" -> identity.address();
+            default -> "";
+        };
     }
     private static void openGenderSelection(ServerPlayerEntity officer,UUID citizenId,int returnPage){List<SelectionMenuScreen.Option> options=java.util.List.of(new SelectionMenuScreen.Option("Weiblich","Weiblich","Amtliche Auswahl",Items.MAGENTA_DYE),new SelectionMenuScreen.Option("Männlich","Männlich","Amtliche Auswahl",Items.BLUE_DYE),new SelectionMenuScreen.Option("Divers","Divers","Amtliche Auswahl",Items.PURPLE_DYE),new SelectionMenuScreen.Option("Keine Angabe","Keine Angabe","Ohne Geschlechtseintrag",Items.GRAY_DYE));SelectionMenuScreen.open(officer,"Geschlecht ändern",options,value->{if(!AuthorityState.mayManageIdentity(officer)){officer.sendMessage(Text.literal("Deine Verwaltungsberechtigung ist nicht mehr gültig.").formatted(Formatting.RED),false);return;}IdentityState state=IdentityState.get(officer.getServer());CitizenIdentity old=state.get(citizenId);if(old!=null)state.put(old.withField("geschlecht",value));open(officer,citizenId,returnPage);},()->open(officer,citizenId,returnPage));}
 }

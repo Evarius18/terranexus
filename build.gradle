@@ -41,7 +41,10 @@ processResources {
 	doLast {
 		def modelPaths = [
 			"assets/terranexus/models/block/management_computer.json",
-			"assets/terranexus/models/item/mobile_phone.json"
+			"assets/terranexus/models/block/time_clock_terminal.json",
+			"assets/terranexus/models/item/mobile_phone.json",
+			"assets/terranexus/models/item/mobile_phone_green.json",
+			"assets/terranexus/models/item/mobile_phone_red.json"
 		]
 		def jsonSlurper = new groovy.json.JsonSlurper()
 		modelPaths.each { modelPath ->
@@ -51,23 +54,35 @@ processResources {
 			}
 			def model = jsonSlurper.parse(modelFile)
 			def changed = false
-			def textureRoot = modelPath.contains("/block/")
-				? "terranexus:block/management_computer/"
+			def timeClock = modelPath.endsWith("/time_clock_terminal.json")
+			def textureRoot = timeClock
+				? "terranexus:block/time_clock_terminal/"
+				: modelPath.contains("/block/") ? "terranexus:block/management_computer/"
 				: "terranexus:item/mobile_phone/"
 			model.textures?.replaceAll { key, value ->
-				if (value in ["rgb_tablet", "tasten"]) {
+				if (value in ["rgb_tablet", "tasten", "rgb_sheet", "Stempeluhr"]) {
 					changed = true
-					return textureRoot + value
+					return textureRoot + (value == "Stempeluhr" ? "stempeluhr" : value)
 				}
 				value
 			}
 			model.elements?.each { element ->
+				if (timeClock && element.faces instanceof Map) {
+					def filteredFaces = element.faces.findAll { direction, face -> face.texture != "#missing" }
+					if (filteredFaces.size() != element.faces.size()) {
+						element.faces = filteredFaces
+						changed = true
+					}
+				}
 				def rotation = element.rotation
 				if (rotation instanceof Map && !rotation.containsKey("axis")) {
 					def axes = ["x", "y", "z"].findAll {
 						rotation[it] instanceof Number && rotation[it].doubleValue() != 0.0d
 					}
-					if (axes.size() == 1) {
+					if (axes.isEmpty()) {
+						element.remove("rotation")
+						changed = true
+					} else if (axes.size() == 1) {
 						def axis = axes.first()
 						def angle = rotation[axis].doubleValue()
 						if (axis == "x" && Math.abs(angle) == 90.0d) {
@@ -107,6 +122,48 @@ processResources {
 							]
 						}
 						changed = true
+					} else if (timeClock) {
+						def origin = rotation.origin.collect { (it as Number).doubleValue() }
+						def radians = ["x", "y", "z"].collect {
+							Math.toRadians(rotation[it] instanceof Number ? rotation[it].doubleValue() : 0.0d)
+						}
+						def rotate = { point, translate ->
+							def x = (point[0] as Number).doubleValue() - (translate ? origin[0] : 0.0d)
+							def y = (point[1] as Number).doubleValue() - (translate ? origin[1] : 0.0d)
+							def z = (point[2] as Number).doubleValue() - (translate ? origin[2] : 0.0d)
+							def y1 = y * Math.cos(radians[0]) - z * Math.sin(radians[0])
+							def z1 = y * Math.sin(radians[0]) + z * Math.cos(radians[0])
+							def x2 = x * Math.cos(radians[1]) + z1 * Math.sin(radians[1])
+							def z2 = -x * Math.sin(radians[1]) + z1 * Math.cos(radians[1])
+							def x3 = x2 * Math.cos(radians[2]) - y1 * Math.sin(radians[2])
+							def y3 = x2 * Math.sin(radians[2]) + y1 * Math.cos(radians[2])
+							[x3 + (translate ? origin[0] : 0.0d),
+							 y3 + (translate ? origin[1] : 0.0d),
+							 z2 + (translate ? origin[2] : 0.0d)]
+						}
+						def points = []
+						[element.from[0], element.to[0]].each { x ->
+							[element.from[1], element.to[1]].each { y ->
+								[element.from[2], element.to[2]].each { z -> points << rotate([x, y, z], true) }
+							}
+						}
+						def rounded = { value -> Math.round(value * 100000.0d) / 100000.0d }
+						element.from = (0..2).collect { coordinate -> rounded(points.collect { it[coordinate] }.min()) }
+						element.to = (0..2).collect { coordinate -> rounded(points.collect { it[coordinate] }.max()) }
+						def normals = [north: [0, 0, -1], south: [0, 0, 1], west: [-1, 0, 0],
+									 east: [1, 0, 0], down: [0, -1, 0], up: [0, 1, 0]]
+						def rotatedFaces = [:]
+						element.faces.each { direction, face ->
+							def normal = rotate(normals[direction], false)
+							def target = normals.max { candidate ->
+								def candidateNormal = candidate.value
+								normal[0] * candidateNormal[0] + normal[1] * candidateNormal[1] + normal[2] * candidateNormal[2]
+							}.key
+							rotatedFaces[target] = face
+						}
+						element.faces = rotatedFaces
+						element.remove("rotation")
+						changed = true
 					}
 				}
 			}
@@ -137,7 +194,16 @@ tasks.register("testResponsiveLayout", JavaExec) {
 	mainClass = "net.evarius.terranexus.client.gui.AdminDesktopLayoutGeometryTest"
 }
 
+tasks.register("testEconomyMessengerPolicies", JavaExec) {
+	group = "verification"
+	description = "Validates temporary messenger retention and ATM banknote denomination rules."
+	dependsOn layoutTestClasses
+	classpath = sourceSets.layoutTest.runtimeClasspath
+	mainClass = "net.evarius.terranexus.EconomyMessengerPolicyTest"
+}
+
 check.dependsOn testResponsiveLayout
+check.dependsOn testEconomyMessengerPolicies
 
 java {
 	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task

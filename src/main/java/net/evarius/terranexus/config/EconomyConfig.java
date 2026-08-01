@@ -2,8 +2,8 @@ package net.evarius.terranexus.config;
 
 public final class EconomyConfig {
     public String _description = "Währung, Anfangsguthaben und Überweisungsgrenzen. Geldbeträge werden in der kleinsten Währungseinheit gespeichert.";
-    public String currencyName = "TerraNexus Euro";
-    public String currencySymbol = "TN€";
+    public String currencyName = "Nexus";
+    public String currencySymbol = "N";
     public int currencyDecimals = 2;
     public long playerStartBalance = 0;
     public long maximumTransferAmount = 100_000_000L;
@@ -16,8 +16,12 @@ public final class EconomyConfig {
     public boolean citizenAllowanceNotifyPlayer = true;
 
     void validate() {
-        currencyName = ConfigManager.text(currencyName, "TerraNexus Euro", 48);
-        currencySymbol = ConfigManager.text(currencySymbol, "TN€", 8);
+        // Migrate the former shipped defaults while preserving genuinely customized currencies.
+        if ("TerraNexus Euro".equalsIgnoreCase(currencyName)) currencyName = "Nexus";
+        if (currencySymbol != null && (currencySymbol.equals("TN€") || currencySymbol.equals("TNâ‚¬")))
+            currencySymbol = "N";
+        currencyName = ConfigManager.text(currencyName, "Nexus", 48);
+        currencySymbol = ConfigManager.text(currencySymbol, "N", 8);
         currencyDecimals = ConfigManager.clamp(currencyDecimals, 0, 2);
         playerStartBalance = Math.max(0, playerStartBalance);
         maximumTransferAmount = Math.max(1, maximumTransferAmount);
